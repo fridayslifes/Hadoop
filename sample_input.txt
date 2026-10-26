@@ -1,0 +1,19 @@
+Apache Hadoop is an open source framework designed for distributed storage and distributed processing of very large datasets on computer clusters built from commodity hardware.
+
+All the modules in Hadoop are designed with a fundamental assumption that hardware failures are common occurrences and should be automatically handled by the framework.
+
+The core of Apache Hadoop consists of a storage part, known as Hadoop Distributed File System or HDFS, and a processing part which is a MapReduce programming model. Hadoop splits files into large blocks and distributes them across nodes in a cluster.
+
+To process data, Hadoop MapReduce transfers packaged code for nodes to process in parallel based on the data that needs to be processed. This approach takes advantage of data locality, where nodes manipulate the data they have access to.
+
+The Apache Hadoop framework is composed of the following modules:
+1. Hadoop Common: The common utilities that support the other Hadoop modules.
+2. Hadoop Distributed File System HDFS: A distributed file system that provides high-throughput access to application data.
+3. Hadoop YARN: A platform responsible for managing computing resources in clusters and using them for scheduling users applications.
+4. Hadoop MapReduce: A YARN-based system for parallel processing of large datasets.
+
+Hadoop MapReduce is a software framework for easily writing applications which process vast amounts of data in-parallel on large clusters of commodity hardware in a reliable, fault-tolerant manner.
+
+A MapReduce job usually splits the input dataset into independent chunks which are processed by the map tasks in a completely parallel manner. The framework sorts the outputs of the maps, which are then input to the reduce tasks. Typically both the input and the output of the job are stored in a file-system.
+
+Hadoop enables big data processing, data analytics, machine learning pipelines, and distributed intelligence across thousands of commodity machines with high reliability and zero single points of failure.

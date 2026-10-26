@@ -1,0 +1,12 @@
+# Hadoop downloads and temporary files
+*.tar.gz
+*.tar.gz.aria2
+/tmp/
+hadoop_download/
+hadoop_data/
+logs/
+*.log
+*.pid
+.DS_Store
+__pycache__/
+*.pyc

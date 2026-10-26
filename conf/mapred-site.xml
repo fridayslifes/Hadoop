@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <!-- Execution framework set to Hadoop YARN -->
+    <property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+        <description>The runtime framework for executing MapReduce jobs.</description>
+    </property>
+
+    <!-- MapReduce ApplicationMaster environment -->
+    <property>
+        <name>yarn.app.mapreduce.am.env</name>
+        <value>HADOOP_MAPRED_HOME=_HADOOP_HOME_</value>
+    </property>
+
+    <!-- Map tasks environment -->
+    <property>
+        <name>mapreduce.map.env</name>
+        <value>HADOOP_MAPRED_HOME=_HADOOP_HOME_</value>
+    </property>
+
+    <!-- Reduce tasks environment -->
+    <property>
+        <name>mapreduce.reduce.env</name>
+        <value>HADOOP_MAPRED_HOME=_HADOOP_HOME_</value>
+    </property>
+
+    <!-- Memory configuration for local pseudo-distributed cluster -->
+    <property>
+        <name>mapreduce.map.memory.mb</name>
+        <value>1024</value>
+    </property>
+    <property>
+        <name>mapreduce.reduce.memory.mb</name>
+        <value>1024</value>
+    </property>
+</configuration>

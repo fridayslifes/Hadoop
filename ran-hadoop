@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# ran-hadoop: Managed Apache Hadoop Cluster Lifecycle CLI
+# Starts HDFS and YARN daemons, monitors cluster health in foreground, and
+# traps SIGINT (Ctrl+C) and SIGHUP (terminal closure) to stop all services cleanly.
+# ==============================================================================
+
+set -e
+
+# ANSI Color codes
+BOLD="\033[1m"
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+CYAN="\033[1;36m"
+RED="\033[1;31m"
+RESET="\033[0m"
+
+# Auto-detect HADOOP_HOME if not exported
+if [ -z "$HADOOP_HOME" ]; then
+    if [ -d "$HOME/hadoop" ]; then
+        export HADOOP_HOME="$HOME/hadoop"
+    elif [ -d "/opt/hadoop" ]; then
+        export HADOOP_HOME="/opt/hadoop"
+    else
+        echo -e "${RED}[ERROR] HADOOP_HOME is not set and default directories ($HOME/hadoop, /opt/hadoop) not found.${RESET}"
+        echo "Please run ./install.sh first or export HADOOP_HOME=/path/to/hadoop."
+        exit 1
+    fi
+fi
+
+# Auto-detect JAVA_HOME if not exported
+if [ -z "$JAVA_HOME" ]; then
+    if [ -f "$HADOOP_HOME/etc/hadoop/hadoop-env.sh" ]; then
+        # Source JAVA_HOME from hadoop-env.sh if set there
+        DETECTED_JAVA=$(grep -E '^export JAVA_HOME=' "$HADOOP_HOME/etc/hadoop/hadoop-env.sh" | cut -d '=' -f 2 | tr -d '"' | tr -d "'" || true)
+        if [ -n "$DETECTED_JAVA" ] && [ -d "$DETECTED_JAVA" ]; then
+            export JAVA_HOME="$DETECTED_JAVA"
+        fi
+    fi
+fi
+
+if [ -z "$JAVA_HOME" ]; then
+    if command -v java >/dev/null 2>&1; then
+        JAVA_BIN=$(readlink -f "$(command -v java)")
+        export JAVA_HOME=$(dirname "$(dirname "$JAVA_BIN")")
+    fi
+fi
+
+# Add Hadoop bins to PATH
+export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$JAVA_HOME/bin:$PATH"
+
+# Function to clean up all Hadoop daemons upon exit or signal
+SHUTDOWN_IN_PROGRESS=0
+cleanup() {
+    if [ "$SHUTDOWN_IN_PROGRESS" -eq 1 ]; then
+        return
+    fi
+    SHUTDOWN_IN_PROGRESS=1
+    trap '' SIGINT SIGTERM SIGHUP EXIT
+
+    echo ""
+    echo -e "${YELLOW}================================================================${RESET}"
+    echo -e "${YELLOW} [ran-hadoop] Shutdown signal received (Ctrl+C / Terminal Closed)${RESET}"
+    echo -e "${YELLOW} Gracefully stopping all Apache Hadoop daemons...              ${RESET}"
+    echo -e "${YELLOW}================================================================${RESET}"
+
+    echo -e "${CYAN}Stopping YARN services (ResourceManager, NodeManager)...${RESET}"
+    if [ -x "$HADOOP_HOME/sbin/stop-yarn.sh" ]; then
+        "$HADOOP_HOME/sbin/stop-yarn.sh" || true
+    fi
+
+    echo -e "${CYAN}Stopping HDFS services (NameNode, DataNode, SecondaryNameNode)...${RESET}"
+    if [ -x "$HADOOP_HOME/sbin/stop-dfs.sh" ]; then
+        "$HADOOP_HOME/sbin/stop-dfs.sh" || true
+    fi
+
+    # Stop JobHistoryServer if running
+    if [ -x "$HADOOP_HOME/bin/mapred" ]; then
+        "$HADOOP_HOME/bin/mapred" --daemon stop historyserver 2>/dev/null || true
+    fi
+
+    # Verify and kill any stubborn orphaned Hadoop JVM processes
+    sleep 1
+    ORPHANS=$(jps 2>/dev/null | grep -E 'NameNode|DataNode|SecondaryNameNode|ResourceManager|NodeManager' | awk '{print $1}' || true)
+    if [ -n "$ORPHANS" ]; then
+        echo -e "${YELLOW}Terminating remaining daemons: $ORPHANS...${RESET}"
+        for pid in $ORPHANS; do
+            kill -15 "$pid" 2>/dev/null || true
+        done
+        sleep 1
+        for pid in $ORPHANS; do
+            kill -9 "$pid" 2>/dev/null || true
+        done
+    fi
+
+    echo -e "${GREEN}================================================================${RESET}"
+    echo -e "${GREEN} [ran-hadoop] All Apache Hadoop services stopped cleanly. Bye!   ${RESET}"
+    echo -e "${GREEN}================================================================${RESET}"
+    exit 0
+}
+
+# Trap signals for Ctrl+C, Terminal Close (SIGHUP), Termination, Normal Exit
+trap cleanup SIGINT SIGTERM SIGHUP EXIT
+
+echo -e "${GREEN}================================================================${RESET}"
+echo -e "${GREEN}${BOLD}           Starting Apache Hadoop via 'ran-hadoop'              ${RESET}"
+echo -e "${GREEN}================================================================${RESET}"
+echo " HADOOP_HOME : $HADOOP_HOME"
+echo " JAVA_HOME   : $JAVA_HOME"
+echo " User        : $(whoami)"
+echo " Host        : $(hostname)"
+echo " Started at  : $(date '+%Y-%m-%d %H:%M:%S')"
+echo -e "${GREEN}================================================================${RESET}"
+
+# Ensure SSH service is running (WSL often does not start services automatically)
+if ! service ssh status >/dev/null 2>&1; then
+    echo -e "${CYAN}[1/4] Ensuring SSH service is running...${RESET}"
+    if sudo -n service ssh start >/dev/null 2>&1 || sudo service ssh start >/dev/null 2>&1 || service ssh start >/dev/null 2>&1; then
+        echo -e "${GREEN}  ✓ SSH service started.${RESET}"
+    else
+        echo -e "${YELLOW}  ! Note: Could not auto-start SSH without sudo password. If Hadoop fails to connect, run 'sudo service ssh start'.${RESET}"
+    fi
+else
+    echo -e "${GREEN}[1/4] ✓ SSH service is active.${RESET}"
+fi
+
+# Check if NameNode is formatted; if not, format it
+if [ ! -d "$HOME/hadoop_data/hdfs/namenode/current" ] && [ ! -d "/tmp/hadoop-$(whoami)/dfs/name/current" ]; then
+    echo -e "${CYAN}[2/4] Formatting HDFS NameNode for first-time use...${RESET}"
+    "$HADOOP_HOME/bin/hdfs" namenode -format -force -nonInteractive
+    echo -e "${GREEN}  ✓ NameNode formatted.${RESET}"
+else
+    echo -e "${GREEN}[2/4] ✓ HDFS NameNode is already formatted.${RESET}"
+fi
+
+# Start HDFS services
+echo -e "${CYAN}[3/4] Starting HDFS (NameNode, DataNode, SecondaryNameNode)...${RESET}"
+"$HADOOP_HOME/sbin/start-dfs.sh"
+
+# Start YARN services
+echo -e "${CYAN}[4/4] Starting YARN (ResourceManager, NodeManager)...${RESET}"
+"$HADOOP_HOME/sbin/start-yarn.sh"
+
+# Wait a brief moment for processes to register
+sleep 2
+
+# Check JPS daemons
+echo ""
+echo -e "${GREEN}================================================================${RESET}"
+echo -e "${GREEN}${BOLD}             Apache Hadoop is Active & Running                  ${RESET}"
+echo -e "${GREEN}================================================================${RESET}"
+echo -e "${BOLD}Active Cluster Daemons (jps):${RESET}"
+jps | grep -E 'NameNode|DataNode|SecondaryNameNode|ResourceManager|NodeManager|Jps' | sed 's/^/  • /' || true
+
+echo ""
+echo -e "${BOLD}Web Management Interfaces:${RESET}"
+echo -e "  🌐 ${CYAN}HDFS NameNode Web UI:${RESET}       ${BOLD}http://localhost:9870${RESET}"
+echo -e "  🌐 ${CYAN}YARN ResourceManager Web UI:${RESET} ${BOLD}http://localhost:8088${RESET}"
+echo -e "  🌐 ${CYAN}DataNode Web UI:${RESET}             ${BOLD}http://localhost:9864${RESET}"
+echo ""
+echo -e "${YELLOW}================================================================${RESET}"
+echo -e "${YELLOW}${BOLD} [CONTROL & LIFECYCLE INSTRUCTIONS]${RESET}"
+echo -e "  • ${BOLD}To run MapReduce jobs:${RESET} Open a NEW terminal window and run your commands."
+echo -e "    Example: ${CYAN}./run-wordcount.sh${RESET}"
+echo -e "  • ${BOLD}To stop Hadoop:${RESET} Press ${BOLD}${RED}[Ctrl + C]${RESET} in this terminal."
+echo -e "  • ${BOLD}Closing this terminal window${RESET} will automatically shut down all Hadoop daemons."
+echo -e "${YELLOW}================================================================${RESET}"
+echo ""
+
+START_TIME=$(date +%s)
+
+# Foreground monitoring loop
+# Note: Using background sleep + wait ensures trapped signals break the loop instantly
+while true; do
+    sleep 5 &
+    wait $!
+
+    # Check if core daemons are still alive
+    ACTIVE_COUNT=$(jps 2>/dev/null | grep -E -c 'NameNode|DataNode|ResourceManager|NodeManager' || true)
+    if [ "$ACTIVE_COUNT" -lt 2 ]; then
+        echo -e "${RED}[WARNING] Key Hadoop daemons appear to have stopped unexpectedly!${RESET}"
+        jps | sed 's/^/  • /'
+        echo -e "${YELLOW}Exiting ran-hadoop...${RESET}"
+        break
+    fi
+
+    NOW=$(date +%s)
+    ELAPSED=$((NOW - START_TIME))
+    MINS=$((ELAPSED / 60))
+    SECS=$((ELAPSED % 60))
+    # Print discreet heartbeat line
+    printf "\r${CYAN}[ran-hadoop]${RESET} Cluster Running | Uptime: %02dm:%02ds | Daemons alive: %d | (Press Ctrl+C to stop) " "$MINS" "$SECS" "$ACTIVE_COUNT"
+done
+
+# If loop terminates naturally, execute cleanup
+cleanup
