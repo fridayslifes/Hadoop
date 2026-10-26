@@ -417,17 +417,19 @@ else
     echo "  HDFS NameNode already contains current metadata. Skipping reformat."
 fi
 
-# 8. Install 'ran-hadoop' CLI and Shell Environment
-echo -e "\n${CYAN}[Step 8/8] Installing 'ran-hadoop' CLI & Persisting Environment...${RESET}"
+# 8. Install 'ran-hadoop' CLI, 'run-wordcount' & Persisting Environment
+echo -e "\n${CYAN}[Step 8/8] Installing 'ran-hadoop' and 'run-wordcount' Globally...${RESET}"
 
-# Copy ran-hadoop executable
+# Copy scripts and set permissions
 chmod +x "$SCRIPT_DIR/ran-hadoop" "$SCRIPT_DIR/run-wordcount.sh" 2>/dev/null || true
 
 CLI_INSTALLED=0
 if [ -w "/usr/local/bin" ] || [ -n "$SUDO_CMD" ]; then
     if $SUDO_CMD cp "$SCRIPT_DIR/ran-hadoop" /usr/local/bin/ran-hadoop 2>/dev/null && \
-       $SUDO_CMD chmod 755 /usr/local/bin/ran-hadoop 2>/dev/null; then
-        echo -e "${GREEN}  ✓ 'ran-hadoop' installed globally to /usr/local/bin/ran-hadoop.${RESET}"
+       $SUDO_CMD cp "$SCRIPT_DIR/run-wordcount.sh" /usr/local/bin/run-wordcount 2>/dev/null && \
+       $SUDO_CMD cp "$SCRIPT_DIR/run-wordcount.sh" /usr/local/bin/run-wordcount.sh 2>/dev/null && \
+       $SUDO_CMD chmod 755 /usr/local/bin/ran-hadoop /usr/local/bin/run-wordcount /usr/local/bin/run-wordcount.sh 2>/dev/null; then
+        echo -e "${GREEN}  ✓ 'ran-hadoop' and 'run-wordcount' installed globally to /usr/local/bin.${RESET}"
         CLI_INSTALLED=1
     fi
 fi
@@ -435,9 +437,15 @@ fi
 if [ "$CLI_INSTALLED" -eq 0 ]; then
     mkdir -p "$HOME/.local/bin"
     cp "$SCRIPT_DIR/ran-hadoop" "$HOME/.local/bin/ran-hadoop"
-    chmod 755 "$HOME/.local/bin/ran-hadoop"
-    echo -e "${GREEN}  ✓ 'ran-hadoop' installed to $HOME/.local/bin/ran-hadoop.${RESET}"
+    cp "$SCRIPT_DIR/run-wordcount.sh" "$HOME/.local/bin/run-wordcount"
+    cp "$SCRIPT_DIR/run-wordcount.sh" "$HOME/.local/bin/run-wordcount.sh"
+    chmod 755 "$HOME/.local/bin/ran-hadoop" "$HOME/.local/bin/run-wordcount" "$HOME/.local/bin/run-wordcount.sh"
+    echo -e "${GREEN}  ✓ Commands installed to $HOME/.local/bin.${RESET}"
 fi
+
+# Also place helper copies into user's home directory
+cp "$SCRIPT_DIR/run-wordcount.sh" "$HOME/run-wordcount.sh" 2>/dev/null || true
+cp "$SCRIPT_DIR/sample_input.txt" "$HOME/sample_input.txt" 2>/dev/null || true
 
 # Update Shell Profiles (~/.bashrc, ~/.profile, ~/.zshrc)
 ENV_SNIPPET=$(cat << EOF

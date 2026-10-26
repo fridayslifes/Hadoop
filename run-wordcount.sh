@@ -37,14 +37,25 @@ export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH"
 INPUT_FILE="${1:-sample_input.txt}"
 
 if [ ! -f "$INPUT_FILE" ]; then
-    # Try resolving relative to script directory
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     if [ -f "$SCRIPT_DIR/$INPUT_FILE" ]; then
         INPUT_FILE="$SCRIPT_DIR/$INPUT_FILE"
+    elif [ -f "$HOME/$INPUT_FILE" ]; then
+        INPUT_FILE="$HOME/$INPUT_FILE"
+    elif [ -f "/mnt/c/Users/admin/hadoop-quickstart/$INPUT_FILE" ]; then
+        INPUT_FILE="/mnt/c/Users/admin/hadoop-quickstart/$INPUT_FILE"
+    elif [ -f "$HADOOP_HOME/$INPUT_FILE" ]; then
+        INPUT_FILE="$HADOOP_HOME/$INPUT_FILE"
     else
-        echo -e "${RED}[ERROR] Input file '$INPUT_FILE' not found!${RESET}"
-        echo "Usage: ./run-wordcount.sh [path/to/textfile.txt]"
-        exit 1
+        # Auto-create sample input if none found
+        INPUT_FILE="/tmp/sample_input.txt"
+        cat << 'EOF' > "$INPUT_FILE"
+Apache Hadoop is an open source framework designed for distributed storage and distributed processing of very large datasets on computer clusters built from commodity hardware.
+All the modules in Hadoop are designed with a fundamental assumption that hardware failures are common occurrences and should be automatically handled by the framework.
+The core of Apache Hadoop consists of a storage part, known as Hadoop Distributed File System or HDFS, and a processing part which is a MapReduce programming model.
+Hadoop splits files into large blocks and distributes them across nodes in a cluster.
+To process data, Hadoop MapReduce transfers packaged code for nodes to process in parallel based on the data that needs to be processed.
+EOF
     fi
 fi
 

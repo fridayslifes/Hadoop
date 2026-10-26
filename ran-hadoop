@@ -238,7 +238,7 @@ start_all_services
 echo -e "${YELLOW}================================================================${RESET}"
 echo -e "${YELLOW}${BOLD} [SINGLE-TERMINAL INTERACTIVE MODE ACTIVE]${RESET}"
 echo -e "  • You can run ANY command directly in the shell prompt below."
-echo -e "    Example: ${CYAN}./run-wordcount.sh${RESET} or ${CYAN}hdfs dfs -ls /${RESET}"
+echo -e "    Example: ${CYAN}run-wordcount${RESET} or ${CYAN}./run-wordcount.sh${RESET} or ${CYAN}hdfs dfs -ls /${RESET}"
 echo -e "  • Type ${BOLD}'exit'${RESET} or press ${BOLD}[Ctrl + D]${RESET} to stop Hadoop and exit."
 echo -e "  • ${BOLD}Closing this terminal window${RESET} will automatically shut down all Hadoop services."
 echo -e "${YELLOW}================================================================${RESET}"
