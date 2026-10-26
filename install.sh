@@ -9,6 +9,12 @@
 
 set -e
 
+# Ensure valid Linux home directory in WSL environments
+REAL_HOME=$(getent passwd "$(whoami)" | cut -d: -f6)
+if [ -n "$REAL_HOME" ] && [ -d "$REAL_HOME" ]; then
+    export HOME="$REAL_HOME"
+fi
+
 # Color helpers
 BOLD="\033[1m"
 GREEN="\033[1;32m"
