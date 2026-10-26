@@ -16,6 +16,14 @@ RED="\033[1;31m"
 RESET="\033[0m"
 
 HADOOP_HOME="${HADOOP_HOME:-$HOME/hadoop}"
+if [ -z "$JAVA_HOME" ]; then
+    if [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+        export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+    elif [ -d "/usr/lib/jvm/default-java" ]; then
+        export JAVA_HOME="/usr/lib/jvm/default-java"
+    fi
+fi
+export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$JAVA_HOME/bin:$PATH"
 
 echo -e "${GREEN}================================================================${RESET}"
 echo -e "${GREEN}${BOLD}             Apache Hadoop Cluster Diagnostic Report            ${RESET}"
