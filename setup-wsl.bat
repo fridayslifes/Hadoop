@@ -1,18 +1,21 @@
 @echo off
-TITLE Apache Hadoop WSL Installer
+TITLE Apache Hadoop Lab PC WSL Launcher
 COLOR 0A
 
 echo ==============================================================================
 echo                Apache Hadoop Automated One-Click WSL Installer
 echo ==============================================================================
 echo.
+echo Target Directory: %~dp0
 echo Launching installation inside Windows Subsystem for Linux (WSL)...
 echo.
 
 wsl --status >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] WSL is not detected on your Windows system.
-    echo Please install WSL by running: wsl --install in an Administrator terminal.
+    echo [ERROR] WSL is not detected or enabled on this PC.
+    echo Please run PowerShell as Administrator and execute:
+    echo     wsl --install -d Ubuntu
+    echo Then restart your PC and run this file again.
     echo.
     pause
     exit /b 1
@@ -23,6 +26,7 @@ wsl -e bash -c "cd \"$(wslpath '%~dp0')\" && chmod +x install.sh ran-hadoop run-
 
 echo.
 echo ==============================================================================
-echo Setup finished. Press any key to exit this window.
+echo Setup finished! You can start Hadoop anytime in your terminal with:
+echo     ran-hadoop
 echo ==============================================================================
 pause
