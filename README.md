@@ -1,131 +1,277 @@
-# 🐘 Apache Hadoop Automated Quickstart & Lifecycle CLI
+# 🐘 Apache Hadoop Automated Lab PC Quickstart & Lifecycle CLI
 
 [![Apache Hadoop](https://img.shields.io/badge/Apache%20Hadoop-3.3.6%20%7C%203.4.x-FF6600?logo=apache&logoColor=white)](https://hadoop.apache.org/)
 [![Java](https://img.shields.io/badge/Java-OpenJDK%2011%20%7C%208-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
-[![OS Support](https://img.shields.io/badge/OS-WSL2%20%7C%20Ubuntu%20%7C%20Debian%20%7C%20CentOS%20%7C%20Fedora%20%7C%20Arch-2496ED?logo=linux&logoColor=white)](https://ubuntu.com/wsl)
-[![Downloader](https://img.shields.io/badge/Speed-16--Thread%20Parallel%20aria2-4CAF50)](#fast-16-thread-accelerated-download)
+[![OS Support](https://img.shields.io/badge/OS-Windows%20Lab%20PC%20%7C%20WSL2%20%7C%20Ubuntu%20%7C%20Debian%20%7C%20CentOS%20%7C%20Arch-2496ED?logo=linux&logoColor=white)](https://ubuntu.com/wsl)
+[![Downloader](https://img.shields.io/badge/Speed-16--Thread%20Parallel%20aria2-4CAF50)](#-16-thread-accelerated-download)
+[![Videos](https://img.shields.io/badge/Video%20Demos-Full%20HD%201080p-E11D48?logo=youtube&logoColor=white)](docs/videos/index.html)
+[![PDF Manual](https://img.shields.io/badge/PDF%20Guide-Lab%20Practical%20Manual-7C3AED?logo=adobeacrobatreader&logoColor=white)](docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 An enterprise-grade, one-click installer, configuration generator, and managed terminal lifecycle command (`ran-hadoop`) for **Apache Hadoop** in **Windows Subsystem for Linux (WSL2)** and **any Linux distribution**.
 
-Includes a complete **6-page PDF guide** (`docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf`), sample dataset, and an automated distributed **MapReduce WordCount** verification script.
+Engineered specifically for **college & university computer lab environments**, allowing students to set up a complete Hadoop cluster in **one single command** and master MapReduce both with **automated shortcuts** and **raw 1-by-1 manual commands** for viva and practical exams.
 
 ---
 
-## ⚡ Highlights
+## ⚡ Quickstart for Lab PCs (Share with Friends!)
 
-- **🚀 One-Click Installation (`./install.sh`)**: Automatically detects your Linux distribution (`apt`, `dnf`, `yum`, `pacman`, `zypper`), installs OpenJDK 11, configures passwordless SSH localhost, tunes XML configuration files, and formats the HDFS NameNode.
-- **⚡ 16-Thread Fast Download**: Employs `aria2c` configured for 16 concurrent segmented streams across Apache CDN and archive mirrors, downloading the ~730 MB package in seconds.
-- **🖥️ The `ran-hadoop` Terminal Lifecycle CLI**:
-  - Run `ran-hadoop` in any terminal to start all HDFS and YARN daemons.
-  - Keeps a real-time health monitor and dashboard in the foreground.
-  - **Press `Ctrl + C`**: Gracefully and cleanly stops all daemons (`stop-yarn.sh`, `stop-dfs.sh`).
-  - **Close the Terminal Window**: POSIX `SIGHUP` trap automatically catches the hangup signal and terminates all daemons cleanly before exiting, ensuring **zero orphaned Java processes** or locked ports in WSL/Linux.
-- **📊 MapReduce WordCount Demo (`./run-wordcount.sh`)**: Complete hands-on tutorial that prepares HDFS directories, ingests text, runs the MapReduce job, and displays the top word counts.
-- **📄 Complete PDF Documentation**: Pre-compiled publication-quality PDF guide included directly inside the repository.
+### Option A: Windows Lab PC (PowerShell 1-Liner) — *Recommended for Labs*
+Copy and paste this single command into **Windows PowerShell**:
+
+```powershell
+irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup-lab.ps1 | iex
+```
+
+> **What this does automatically:**
+> 1. Saves all repository files directly onto your **Windows Desktop** (`%USERPROFILE%\Desktop\Hadoop`).
+> 2. Automatically verifies/enables **WSL2** and Ubuntu.
+> 3. Installs OpenJDK 11, configures SSH keys, tunes Hadoop XML files, and formats the NameNode.
+> 4. Creates convenient **Desktop Shortcuts**:
+>    - `Start Hadoop (ran-hadoop).lnk` (double-click to start Hadoop anytime)
+>    - `Run Hadoop WordCount.lnk` (double-click to test MapReduce instantly)
+
+---
+
+### Option B: Linux / WSL Terminal (Bash 1-Liner)
+If you already have a terminal open in WSL or native Linux, run:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/fridayslifes/Hadoop/main/install.sh | bash
+```
+
+---
+
+### Option C: Traditional Git Clone (2-Liner)
+```bash
+git clone https://github.com/fridayslifes/Hadoop.git ~/Desktop/Hadoop
+cd ~/Desktop/Hadoop && ./install.sh
+```
+
+---
+
+## 🎥 Video Demonstrations & Interactive Player
+
+We provide two pre-compiled Full HD (1080p) explainer videos along with an interactive media player:
+
+| Video | Topic | Direct Video File | Interactive Player |
+| :--- | :--- | :--- | :--- |
+| **Video 1** | **1-Click Lab PC & WSL Setup Walkthrough** | [Download MP4](docs/videos/lab_setup_walkthrough.mp4) | [Open Web Player](docs/videos/index.html) |
+| **Video 2** | **MapReduce: Fast Shortcut vs 1-by-1 Manual Commands** | [Download MP4](docs/videos/mapreduce_shortcut_vs_manual.mp4) | [Open Web Player](docs/videos/index.html) |
+
+👉 **[Click Here to Open the Interactive HTML5 Video Player](docs/videos/index.html)** (includes 1-click copy buttons for all commands).
+
+---
+
+## 📄 Complete PDF Lab Practical Manual
+
+A publication-grade reference PDF is included directly inside the repository:
+
+📥 **[Download Hadoop Complete Practical Guide (PDF)](docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf)**
+
+**What's inside the PDF:**
+- 1-Click Windows Lab PC & Linux/WSL Setup Guide.
+- **Track A (Speed Run)**: 1-line automated MapReduce shortcuts.
+- **Track B (Viva & Practical Exams)**: Line-by-line manual commands without shortcuts.
+- Python Hadoop Streaming MapReduce (`mapper.py` & `reducer.py`).
+- Troubleshooting table for NameNode Safe Mode, port conflicts, and memory limits.
+
+---
+
+## 🚀 How to Run the Cluster (`ran-hadoop`)
+
+Once installed, reload your shell and launch the supervisor:
+
+```bash
+source ~/.bashrc
+ran-hadoop
+```
+
+You will see the live foreground cluster monitor:
+
+```text
+================================================================
+             Apache Hadoop is Active & Running                  
+================================================================
+Active Cluster Daemons (jps):
+  • 18234 NameNode          (Port 9870)
+  • 18356 DataNode          (Port 9864)
+  • 18490 SecondaryNameNode (Port 9868)
+  • 18612 ResourceManager   (Port 8088)
+  • 18745 NodeManager       (Port 8042)
+
+Web Management Portals in your Browser:
+  🌐 HDFS NameNode Web UI:       http://localhost:9870
+  🌐 YARN ResourceManager Web UI: http://localhost:8088
+  🌐 DataNode Web UI:             http://localhost:9864
+
+================================================================
+ [LIFECYCLE INSTRUCTIONS]
+  • To run MapReduce: Open a NEW terminal window and run your commands.
+  • To stop Hadoop: Press [Ctrl + C] in this terminal.
+  • Closing this terminal window cleanly terminates all daemons (Zero RAM leak).
+================================================================
+```
+
+---
+
+## 📊 MapReduce: Dual Execution Tracks
+
+Open a **second terminal tab** while `ran-hadoop` is running in Terminal 1.
+
+### Track A: The Fast 1-Line Shortcut (Speed Run)
+
+To process the default Big Data dataset:
+```bash
+./run-wordcount.sh
+```
+
+To process any custom text file on your computer:
+```bash
+./run-wordcount.sh /path/to/my_document.txt
+```
+
+*(Because commands are linked globally, you can also run `run-wordcount <file>` from anywhere).*
+
+---
+
+### Track B: Step-by-Step 1-by-1 Manual Commands (for Lab Exams & Viva)
+
+During lab examinations and viva voce evaluations, professors often ask students to enter each command manually. Follow this exact sequence:
+
+#### Step 1: Check running cluster daemons
+```bash
+jps
+```
+*(Verify `NameNode`, `DataNode`, `ResourceManager`, and `NodeManager` appear).*
+
+#### Step 2: Create input directory in HDFS
+```bash
+hdfs dfs -mkdir -p /my_lab/input
+```
+
+#### Step 3: Upload local text file to HDFS
+```bash
+hdfs dfs -put -f sample_input.txt /my_lab/input/
+```
+
+#### Step 4: Verify file exists in HDFS
+```bash
+hdfs dfs -ls /my_lab/input
+hdfs dfs -cat /my_lab/input/sample_input.txt | head -n 10
+```
+
+#### Step 5: Clean previous output directory (if re-running)
+```bash
+hdfs dfs -rm -r -f /my_lab/output
+```
+
+#### Step 6: Execute the MapReduce JAR
+```bash
+hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_lab/input /my_lab/output
+```
+
+#### Step 7: Inspect output word frequencies in HDFS
+```bash
+hdfs dfs -ls /my_lab/output
+hdfs dfs -cat /my_lab/output/part-r-00000 | head -n 25
+```
+
+#### Step 8: Download results back to your local computer
+```bash
+hdfs dfs -get /my_lab/output/part-r-00000 ./lab_results.txt
+cat ./lab_results.txt | sort -k2 -nr | head -n 25
+```
+
+---
+
+## 🐍 Bonus: Python Hadoop Streaming MapReduce
+
+If your curriculum uses Python instead of Java:
+
+### 1. `mapper.py`
+```python
+#!/usr/bin/env python3
+import sys
+
+for line in sys.stdin:
+    line = line.strip()
+    words = line.split()
+    for word in words:
+        print(f"{word}\t1")
+```
+
+### 2. `reducer.py`
+```python
+#!/usr/bin/env python3
+import sys
+
+current_word = None
+current_count = 0
+
+for line in sys.stdin:
+    line = line.strip()
+    word, count = line.split('\t', 1)
+    count = int(count)
+    if current_word == word:
+        current_count += count
+    else:
+        if current_word:
+            print(f"{current_word}\t{current_count}")
+        current_word = word
+        current_count = count
+
+if current_word:
+    print(f"{current_word}\t{current_count}")
+```
+
+### 3. Run Python Streaming Job:
+```bash
+chmod +x mapper.py reducer.py
+hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \
+       -input /my_lab/input \
+       -output /my_lab/python_output \
+       -mapper ./mapper.py \
+       -reducer ./reducer.py
+```
 
 ---
 
 ## 📁 Repository Structure
 
 ```text
-hadoop-quickstart/
-├── install.sh                  # Main one-click installer (distro detection, 16-thread download, config)
-├── ran-hadoop                  # Foreground cluster manager with Ctrl+C and SIGHUP auto-shutdown
-├── run-wordcount.sh            # Automated MapReduce WordCount execution and results reporter
-├── setup-wsl.bat               # Windows batch launcher (runs install.sh inside WSL with 1-click)
-├── sample_input.txt            # Ready-to-process Big Data text file for WordCount
-├── LICENSE                     # MIT License
-├── README.md                   # This documentation
-├── conf/                       # Pre-tuned XML configuration templates
-│   ├── core-site.xml           # HDFS master URI (hdfs://localhost:9000) & tmp paths
-│   ├── hdfs-site.xml           # Replication factor 1 & NameNode/DataNode storage
-│   ├── mapred-site.xml         # YARN execution framework & memory tuning
-│   └── yarn-site.xml           # Shuffle service & WSL memory check adjustments
+Hadoop/
+├── setup-lab.ps1             # 1-Click Windows PowerShell lab installer (saves to Desktop)
+├── setup-wsl.bat             # Windows batch launcher (runs install.sh inside WSL)
+├── install.sh                # Main automated installer (16-thread download & pipe support)
+├── ran-hadoop                # Foreground cluster manager with Ctrl+C and SIGHUP auto-stop
+├── run-wordcount.sh          # Automated MapReduce WordCount execution and results reporter
+├── sample_input.txt          # Big Data sample dataset for testing
+├── LICENSE                   # MIT License
+├── README.md                 # Complete documentation
+├── conf/                     # Pre-tuned XML configuration templates
+│   ├── core-site.xml         # HDFS master URI (hdfs://localhost:9000) & tmp paths
+│   ├── hdfs-site.xml         # Replication factor 1 & storage paths
+│   ├── mapred-site.xml       # YARN execution framework & memory tuning
+│   └── yarn-site.xml         # Shuffle service & WSL memory check adjustments
 ├── docs/
-│   └── Hadoop_Complete_Guide_Install_Run_WordCount.pdf  # 6-page comprehensive reference guide
+│   ├── Hadoop_Complete_Guide_Install_Run_WordCount.pdf # Publication-quality PDF manual
+│   └── videos/               # High-definition video assets & web player
+│       ├── lab_setup_walkthrough.mp4
+│       ├── mapreduce_shortcut_vs_manual.mp4
+│       └── index.html        # Interactive HTML5 media player
 └── scripts/
-    ├── generate_pdf.py         # Python ReportLab compiler to re-generate the PDF guide
-    ├── stop-hadoop-clean.sh    # Emergency force-cleanup utility for lingering daemons
-    └── verify-cluster.sh       # Comprehensive cluster diagnostics and health checker
-```
-
----
-
-## 🚀 Quickstart Guide
-
-### Option A: From Windows (Using WSL2)
-
-1. Clone the repository into Windows or WSL:
-   ```powershell
-   git clone <repo-url> hadoop-quickstart
-   cd hadoop-quickstart
-   ```
-2. Double-click `setup-wsl.bat` (or run it from CMD/PowerShell):
-   ```cmd
-   setup-wsl.bat
-   ```
-3. Open your WSL terminal (`wsl`) and run:
-   ```bash
-   source ~/.bashrc
-   ran-hadoop
-   ```
-
----
-
-### Option B: From Linux / WSL Terminal
-
-#### 1. Clone & Run the One-Click Installer
-```bash
-git clone <repo-url> hadoop-quickstart
-cd hadoop-quickstart
-chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh
-./install.sh
-```
-*The installer automatically handles distro packages, installs OpenJDK 11, downloads Hadoop using 16 threads, generates all configuration files, configures passwordless SSH, formats the NameNode, and registers `ran-hadoop` into `/usr/local/bin`.*
-
-#### 2. Reload Shell Profile
-```bash
-source ~/.bashrc
-```
-
-#### 3. Start Hadoop via `ran-hadoop`
-```bash
-ran-hadoop
-```
-You will see the live cluster dashboard:
-```text
-================================================================
-             Apache Hadoop is Active & Running                  
-================================================================
-Active Cluster Daemons (jps):
-  • 18234 NameNode
-  • 18356 DataNode
-  • 18490 SecondaryNameNode
-  • 18612 ResourceManager
-  • 18745 NodeManager
-
-Web Management Interfaces:
-  🌐 HDFS NameNode Web UI:       http://localhost:9870
-  🌐 YARN ResourceManager Web UI: http://localhost:8088
-  🌐 DataNode Web UI:             http://localhost:9864
-
-================================================================
- [CONTROL & LIFECYCLE INSTRUCTIONS]
-  • To run MapReduce jobs: Open a NEW terminal window and run your commands.
-    Example: ./run-wordcount.sh
-  • To stop Hadoop: Press [Ctrl + C] in this terminal.
-  • Closing this terminal window will automatically shut down all Hadoop daemons.
-================================================================
+    ├── generate_pdf.py       # Python ReportLab compiler to re-generate the PDF guide
+    ├── generate_videos.py    # Automated FFmpeg generator for the 2 demo videos
+    ├── stop-hadoop-clean.sh  # Clean cluster teardown utility
+    └── verify-cluster.sh     # Comprehensive diagnostics and health checker
 ```
 
 ---
 
 ## 🛑 How the Auto-Shutdown Lifecycle Works
 
-In standard Hadoop setups, users often forget background daemons, leaving ports `9000` and `9870` locked and consuming gigabytes of WSL RAM. 
-
-`ran-hadoop` solves this using **POSIX Signal Interception**:
+In standard Hadoop setups, users forget background daemons, leaving ports `9000` and `9870` locked and consuming gigabytes of WSL RAM. `ran-hadoop` solves this using **POSIX Signal Interception**:
 
 ```
 +--------------------------------------------------------------+
@@ -160,67 +306,8 @@ In standard Hadoop setups, users often forget background daemons, leaving ports 
                +----------------------------------+
                                 |
                                 v
-                  Zero Residual Memory / Clean Exit
+                   Zero Residual Memory / Clean Exit
 ```
-
----
-
-## 📊 Running the MapReduce WordCount Demo
-
-While `ran-hadoop` is running in **Terminal 1**, open **Terminal 2** and execute:
-
-```bash
-cd hadoop-quickstart
-./run-wordcount.sh
-```
-
-### What `run-wordcount.sh` Does:
-1. Validates that HDFS is reachable.
-2. Creates an HDFS input directory: `/wordcount_demo/input`.
-3. Ingests `sample_input.txt` into HDFS.
-4. Executes the MapReduce job using `hadoop-mapreduce-examples-*.jar`.
-5. Cleans previous outputs and computes parallel word frequencies across YARN containers.
-6. Retrieves and sorts the top words in descending frequency:
-
-```text
-================================================================
-TOP 25 MOST FREQUENT WORDS:
-================================================================
-WORD                      | COUNT
-----------------------------------------
-and                       | 14
-of                        | 10
-Hadoop                    | 9
-the                       | 9
-in                        | 7
-to                        | 6
-data                      | 6
-distributed               | 5
-is                        | 5
-processing                | 4
-MapReduce                 | 4
-cluster                   | 3
-...
-----------------------------------------
-Total unique words processed: 118
-```
-
-You can also pass your own custom text file:
-```bash
-./run-wordcount.sh /path/to/my_big_text_file.txt
-```
-
----
-
-## 🌐 Web Management Interfaces
-
-Once `ran-hadoop` is active, open your favorite browser (in Windows or Linux):
-
-| Web Portal | Browser URL | Key Features |
-| :--- | :--- | :--- |
-| **HDFS NameNode UI** | [`http://localhost:9870`](http://localhost:9870) | Storage capacity, live DataNodes, block reports, HDFS file browser. |
-| **YARN ResourceManager UI** | [`http://localhost:8088`](http://localhost:8088) | Running/completed MapReduce jobs, allocated vcores/RAM, container logs. |
-| **HDFS DataNode UI** | [`http://localhost:9864`](http://localhost:9864) | Local block pool utilization and storage paths. |
 
 ---
 
@@ -232,15 +319,20 @@ Once `ran-hadoop` is active, open your favorite browser (in Windows or Linux):
   ```
   Tests Java version, HDFS connectivity, SSH localhost connection, running daemons (`jps`), and storage health.
 
-- **Emergency Clean Teardown**:
+- **Emergency Force Teardown**:
   ```bash
   ./scripts/stop-hadoop-clean.sh
   ```
-  Stops DFS and YARN and kills any lingering orphaned JVMs.
+  Stops DFS and YARN and terminates any lingering orphaned JVMs.
 
 - **Rebuild the PDF Guide**:
   ```bash
   python scripts/generate_pdf.py
+  ```
+
+- **Re-render the Videos**:
+  ```bash
+  python scripts/generate_videos.py
   ```
 
 ---
