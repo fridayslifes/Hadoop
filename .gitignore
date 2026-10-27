@@ -8,5 +8,9 @@ logs/
 *.log
 *.pid
 .DS_Store
+# Python environment and cache
 __pycache__/
 *.pyc
+.venv/
+.superpowers/
+
