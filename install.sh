@@ -26,7 +26,49 @@ RESET="\033[0m"
 HADOOP_VERSION="${HADOOP_VERSION:-3.3.6}"
 INSTALL_DIR="${HADOOP_INSTALL_DIR:-$HOME/hadoop}"
 DATA_DIR="${HADOOP_DATA_DIR:-$HOME/hadoop_data}"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || pwd)"
+
+# Auto-bootstrap repository if executed directly via pipe (e.g. curl ... | bash)
+if [ ! -f "$SCRIPT_DIR/ran-hadoop" ] || [ ! -d "$SCRIPT_DIR/conf" ]; then
+    echo -e "${YELLOW}[*] Installer running via pipe or standalone stream. Bootstrapping repository files...${RESET}"
+    
+    BOOTSTRAP_DIR=""
+    # Check for Windows Desktop if running inside WSL
+    if command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+        WIN_USER_DESKTOP=$(cmd.exe /c "echo %USERPROFILE%\Desktop" 2>/dev/null | tr -d '\r' || true)
+        if [ -n "$WIN_USER_DESKTOP" ]; then
+            WSL_WIN_DESKTOP=$(wslpath -u "$WIN_USER_DESKTOP" 2>/dev/null || true)
+            if [ -d "$WSL_WIN_DESKTOP" ]; then
+                BOOTSTRAP_DIR="$WSL_WIN_DESKTOP/Hadoop"
+            fi
+        fi
+    fi
+
+    if [ -z "$BOOTSTRAP_DIR" ]; then
+        if [ -d "$HOME/Desktop" ]; then
+            BOOTSTRAP_DIR="$HOME/Desktop/Hadoop"
+        else
+            BOOTSTRAP_DIR="$HOME/Hadoop"
+        fi
+    fi
+
+    echo -e "${CYAN}    Target destination: $BOOTSTRAP_DIR${RESET}"
+    if [ ! -d "$BOOTSTRAP_DIR" ]; then
+        if command -v git >/dev/null 2>&1; then
+            git clone https://github.com/fridayslifes/Hadoop.git "$BOOTSTRAP_DIR"
+        else
+            mkdir -p "$BOOTSTRAP_DIR"
+            curl -sSL https://github.com/fridayslifes/Hadoop/archive/refs/heads/main.tar.gz | tar -xz -C "$BOOTSTRAP_DIR" --strip-components=1
+        fi
+    fi
+
+    cd "$BOOTSTRAP_DIR"
+    chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true
+    exec ./install.sh "$@"
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+
 
 echo -e "${GREEN}================================================================${RESET}"
 echo -e "${GREEN}${BOLD}       Apache Hadoop Automated One-Click Installer              ${RESET}"
