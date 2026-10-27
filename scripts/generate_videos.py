@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
 """
-generate_videos.py - Programmatically creates 2 professional Full HD (1920x1080)
-demo and walkthrough MP4 videos using Pillow and FFmpeg.
-
-Video 1: lab_setup_walkthrough.mp4 (Universal 1-Click Setup Walkthrough)
-         Demonstrates the 1-click Windows & Linux/WSL setup, Git check/install,
-         Desktop folder placement, 16-thread download, and ran-hadoop supervisor.
-
-Video 2: mapreduce_shortcut_vs_manual.mp4 (MapReduce Shortcut vs 1-by-1 Manual Reference)
-         Demonstrates Hadoop MapReduce: The 1-line shortcut vs the complete
-         step-by-step 1-by-1 manual command workflow.
+generate_videos.py - Generates 2 clean Full HD (1920x1080) walkthrough MP4 videos
+for Hadoop installation and MapReduce WordCount.
 """
 
 import os
@@ -34,33 +26,28 @@ def get_font(path, size, index=0):
             return ImageFont.load_default()
 
 def draw_header(draw, title, subtitle):
-    draw.rectangle([(0, 0), (1920, 140)], fill="#0F172A")
-    draw.line([(0, 140), (1920, 140)], fill="#0284C7", width=4)
+    draw.rectangle([(0, 0), (1920, 135)], fill="#0F172A")
+    draw.line([(0, 135), (1920, 135)], fill="#0284C7", width=3)
     
     font_badge = get_font(FONT_ARIAL, 20)
-    font_title = get_font(FONT_ARIAL, 38)
-    font_sub = get_font(FONT_ARIAL, 22)
+    font_title = get_font(FONT_ARIAL, 36)
+    font_sub = get_font(FONT_ARIAL, 21)
     
-    draw.rounded_rectangle([(60, 26), (230, 62)], radius=6, fill="#0284C7")
-    draw.text((80, 32), "APACHE HADOOP", font=font_badge, fill="#FFFFFF")
+    draw.rounded_rectangle([(60, 24), (200, 60)], radius=6, fill="#0284C7")
+    draw.text((80, 30), "HADOOP", font=font_badge, fill="#FFFFFF")
     
-    draw.text((255, 26), title, font=font_title, fill="#F8FAFC")
-    draw.text((60, 85), subtitle, font=font_sub, fill="#94A3B8")
+    draw.text((225, 24), title, font=font_title, fill="#F8FAFC")
+    draw.text((60, 82), subtitle, font=font_sub, fill="#94A3B8")
 
-def draw_footer(draw, progress_text, step_badge=""):
+def draw_footer(draw, progress_text):
     draw.rectangle([(0, 1010), (1920, 1080)], fill="#0F172A")
-    draw.line([(0, 1010), (1920, 1010)], fill="#334155", width=2)
+    draw.line([(0, 1010), (1920, 1010)], fill="#334155", width=1)
     
     font_footer = get_font(FONT_ARIAL, 20)
-    draw.text((60, 1032), "fridayslifes/Hadoop • Universal Quickstart & Lifecycle Guide", font=font_footer, fill="#64748B")
-    
-    if step_badge:
-        draw.rounded_rectangle([(1400, 1025), (1600, 1065)], radius=6, fill="#1E293B")
-        draw.text((1420, 1033), step_badge, font=font_footer, fill="#38BDF8")
-        
+    draw.text((60, 1032), "Apache Hadoop Installation & MapReduce Guide", font=font_footer, fill="#64748B")
     draw.text((1640, 1032), progress_text, font=font_footer, fill="#94A3B8")
 
-def draw_terminal(draw, x, y, w, h, title, command_lines, output_lines=[]):
+def draw_terminal(draw, x, y, w, h, title, command_lines, output_lines=[], cursor_on=True):
     draw.rounded_rectangle([(x, y), (x + w, y + h)], radius=12, fill="#1E1E2E", outline="#313244", width=2)
     draw.rounded_rectangle([(x, y), (x + w, y + 44)], radius=12, fill="#181825")
     draw.rectangle([(x, y + 30), (x + w, y + 44)], fill="#181825")
@@ -76,12 +63,16 @@ def draw_terminal(draw, x, y, w, h, title, command_lines, output_lines=[]):
     font_out = get_font(FONT_MONACO, 19)
     
     curr_y = y + 65
-    for cmd in command_lines:
+    for i, cmd in enumerate(command_lines):
         draw.text((x + 25, curr_y), "$ ", font=font_code, fill="#89B4FA")
         draw.text((x + 55, curr_y), cmd, font=font_code, fill="#A6E3A1")
+        if cursor_on and i == len(command_lines) - 1 and len(output_lines) == 0:
+            bbox = font_code.getbbox(cmd)
+            cursor_x = x + 55 + (bbox[2] - bbox[0]) + 4
+            draw.rectangle([(cursor_x, curr_y + 2), (cursor_x + 12, curr_y + 24)], fill="#A6E3A1")
         curr_y += 36
         
-    curr_y += 10
+    curr_y += 8
     for out in output_lines:
         color = "#BAC2DE"
         if "[✓]" in out or "✓" in out or "SUCCESS" in out:
@@ -105,171 +96,150 @@ def draw_info_box(draw, x, y, w, h, title, bullets, border_color="#0284C7", bg_c
         draw.text((x + 55, curr_y), b, font=font_bullet, fill="#E2E8F0")
         curr_y += 38
 
+def draw_progress_bar(draw, x, y, w, h, progress_ratio, label):
+    draw.rounded_rectangle([(x, y), (x + w, y + h)], radius=8, fill="#181825", outline="#313244", width=2)
+    fill_w = int((w - 4) * min(max(progress_ratio, 0.0), 1.0))
+    if fill_w > 8:
+        draw.rounded_rectangle([(x + 2, y + 2), (x + 2 + fill_w, y + h - 2)], radius=6, fill="#10B981")
+    font_bar = get_font(FONT_MONACO, 18)
+    draw.text((x + 15, y + 8), label, font=font_bar, fill="#FFFFFF")
+
 
 # =============================================================================
-# SCENES FOR VIDEO 1: Universal Setup Walkthrough
+# VIDEO 1: Setup Walkthrough
 # =============================================================================
-def make_video_1_scenes():
-    scenes = []
-    
-    # Scene 1: Universal 1-Click Overview
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Universal 1-Click Apache Hadoop Setup", "Automated End-to-End Installation on Windows (WSL2) & Linux")
-    draw_info_box(draw, 100, 200, 800, 720, "What This Automates", [
-        "Checks & installs Git automatically if absent.",
-        "Detects & configures WSL2 with Ubuntu.",
-        "Downloads Hadoop via 16-thread accelerator.",
-        "Configures Java OpenJDK 11 & passwordless SSH.",
-        "Generates all HDFS and YARN XML configurations.",
+def render_video_1_frames(out_dir, fps=30):
+    os.makedirs(out_dir, exist_ok=True)
+    frame_idx = 0
+
+    def save_frame(img):
+        nonlocal frame_idx
+        fpath = os.path.join(out_dir, f"frame_{frame_idx:05d}.png")
+        img.save(fpath)
+        frame_idx += 1
+
+    # Scene 1: Overview (3s)
+    img_s1 = Image.new("RGB", (1920, 1080), "#0B0F19")
+    draw = ImageDraw.Draw(img_s1)
+    draw_header(draw, "Hadoop Installation Guide", "One-Command Setup for Windows (WSL) & Linux")
+    draw_info_box(draw, 100, 190, 800, 740, "What Gets Installed", [
+        "Installs Git if not already on the machine.",
+        "Enables WSL2 & Ubuntu if on Windows.",
+        "Installs OpenJDK 11 and OpenSSH.",
+        "Downloads Hadoop 3.3.6 (16-thread download).",
+        "Configures core-site, hdfs-site, yarn-site.",
         "Formats HDFS NameNode automatically."
     ], border_color="#10B981")
-    draw_info_box(draw, 1020, 200, 800, 720, "Universal Deployment", [
-        "Works on any Windows 10/11 system.",
-        "Works on Ubuntu, Debian, CentOS, Fedora, Arch.",
-        "Files placed cleanly in Desktop\\Hadoop.",
-        "Zero manual environment variable editing.",
-        "Desktop shortcuts generated for quick launch."
+    draw_info_box(draw, 1020, 190, 800, 740, "Quick Commands", [
+        "Windows (PowerShell):",
+        "  irm https://raw.githubusercontent.com/.../setup.ps1 | iex",
+        "",
+        "Linux / WSL:",
+        "  curl -sSL https://raw.githubusercontent.com/.../install.sh | bash",
+        "",
+        "Start Hadoop:",
+        "  ran-hadoop"
     ], border_color="#38BDF8")
-    draw_footer(draw, "Scene 1 / 5", "Overview")
-    scenes.append((img, 4))
-    
-    # Scene 2: Windows PowerShell 1-Liner
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Step 1: Execute the 1-Liner in PowerShell", "Single command handles Git, WSL, and Hadoop extraction to Desktop")
-    draw_terminal(draw, 100, 190, 1720, 750, "Windows PowerShell", [
-        "irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup.ps1 | iex"
-    ], [
-        "[*] Destination Directory: C:\\Users\\User\\Desktop\\Hadoop",
-        "[*] Checking for Git... Installing Git via winget if missing... [✓] Done",
-        "[*] Downloading Hadoop repository to your Desktop...",
-        "[✓] Repository successfully extracted to Desktop\\Hadoop",
-        "[*] Verifying Windows Subsystem for Linux (WSL) status...",
-        "[✓] WSL is active and operational.",
+    draw_footer(draw, "1 / 4")
+    for _ in range(90):
+        save_frame(img_s1)
+
+    # Scene 2: PowerShell Execution (5s)
+    full_cmd = "irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup.ps1 | iex"
+    out_lines = [
+        "[*] Destination: C:\\Users\\User\\Desktop\\Hadoop",
+        "[*] Checking for Git... [✓] Git ready",
+        "[*] Downloading repository to Desktop... [✓] Done",
+        "[*] Checking WSL status... [✓] WSL active",
         "[✓] Created Desktop Shortcut: 'Start Hadoop (ran-hadoop)'",
         "[✓] Created Desktop Shortcut: 'Run Hadoop WordCount'",
-        "[*] Initiating automated Hadoop setup inside WSL...",
-        "------------------------------------------------------------------------------",
-        "[✓] OpenJDK 11 verified",
-        "[✓] SSH keygen & authorized_keys configured",
-        "[✓] core-site.xml, hdfs-site.xml, mapred-site.xml, yarn-site.xml generated"
-    ])
-    draw_footer(draw, "Scene 2 / 5", "PowerShell 1-Liner")
-    scenes.append((img, 5))
-    
-    # Scene 3: 16-Thread Fast Download
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Step 2: 16-Thread Accelerated Hadoop Download", "Downloads the 730MB Apache distribution in seconds via aria2")
-    draw_terminal(draw, 100, 190, 1720, 750, "Installation Terminal", [
-        "aria2c --split=16 --max-connection-per-server=16 https://dlcdn.apache.org/.../hadoop-3.3.6.tar.gz"
-    ], [
-        "[*] 16 concurrent segmented streams connected across Apache CDN mirrors",
-        "[#4b2a10 710MiB/730MiB(97%) CN:16 DL:68MiB ETA:0s]",
-        "[#4b2a10 730MiB/730MiB(100%) CN:16 DL:72MiB]",
-        "[✓] Download completed in 10.4 seconds (Average 70 MB/s)",
-        "[✓] Verifying tarball archive integrity... OK",
-        "[✓] Extracted to $HOME/hadoop successfully.",
-        "[✓] Formatting HDFS NameNode storage... Storage directory formatted successfully.",
-        "[✓] 'ran-hadoop' CLI installed globally to /usr/local/bin/ran-hadoop."
-    ])
-    draw_footer(draw, "Scene 3 / 5", "16-Thread Download")
-    scenes.append((img, 5))
-    
-    # Scene 4: Starting Hadoop via ran-hadoop
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Step 3: Launch Cluster Supervisor ('ran-hadoop')", "Starts HDFS + YARN and prevents orphaned Java processes")
-    draw_terminal(draw, 100, 190, 1720, 750, "Terminal 1: Foreground Supervisor", [
-        "ran-hadoop"
-    ], [
-        "================================================================",
-        "             Apache Hadoop is Active & Running                  ",
-        "================================================================",
-        "Active Cluster Daemons (jps):",
-        "  • 18234 NameNode          (Port 9870)",
-        "  • 18356 DataNode          (Port 9864)",
-        "  • 18490 SecondaryNameNode (Port 9868)",
-        "  • 18612 ResourceManager   (Port 8088)",
-        "  • 18745 NodeManager       (Port 8042)",
+        "[*] Running installation inside WSL...",
+        "[✓] OpenJDK 11 installed",
+        "[✓] SSH localhost keys configured",
+        "[✓] Hadoop XML files written and NameNode formatted"
+    ]
+    for f in range(150):
+        img = Image.new("RGB", (1920, 1080), "#0B0F19")
+        draw = ImageDraw.Draw(img)
+        draw_header(draw, "Step 1: Run the Setup Command", "Downloads to Desktop and installs everything automatically")
+        type_len = int(len(full_cmd) * min(f / 45.0, 1.0))
+        out_count = 0
+        if f > 45:
+            out_count = int(len(out_lines) * min((f - 45) / 75.0, 1.0))
+        draw_terminal(draw, 100, 180, 1720, 760, "PowerShell", [full_cmd[:type_len]], out_lines[:out_count], cursor_on=(f % 16 < 8))
+        draw_footer(draw, "2 / 4")
+        save_frame(img)
+
+    # Scene 3: Fast Download & NameNode Format (5s)
+    s3_cmd = "aria2c --split=16 --max-connection-per-server=16 https://.../hadoop-3.3.6.tar.gz"
+    for f in range(150):
+        img = Image.new("RGB", (1920, 1080), "#0B0F19")
+        draw = ImageDraw.Draw(img)
+        draw_header(draw, "Step 2: 16-Thread Download & Setup", "Downloads Hadoop 3.3.6 archive and formats NameNode")
+        prog = min(f / 110.0, 1.0)
+        mb = int(730 * prog)
+        pct = int(prog * 100)
+        s3_outs = [
+            f"[*] Downloading: {mb} / 730 MB ({pct}%) • 16 connections"
+        ]
+        if prog >= 1.0:
+            s3_outs.extend([
+                "[✓] Download complete.",
+                "[✓] Extracted to $HOME/hadoop.",
+                "[✓] HDFS NameNode formatted successfully.",
+                "[✓] 'ran-hadoop' ready."
+            ])
+        draw_terminal(draw, 100, 180, 1720, 760, "Installation Progress", [s3_cmd], s3_outs)
+        draw_progress_bar(draw, 130, 340, 1660, 36, prog, f"Download: {pct}% ({mb}/730 MB)")
+        draw_footer(draw, "3 / 4")
+        save_frame(img)
+
+    # Scene 4: Starting Hadoop (4s)
+    img_s4 = Image.new("RGB", (1920, 1080), "#0B0F19")
+    draw = ImageDraw.Draw(img_s4)
+    draw_header(draw, "Step 3: Start Hadoop with 'ran-hadoop'", "Starts HDFS and YARN daemons with clean Ctrl+C shutdown")
+    draw_terminal(draw, 100, 180, 1720, 760, "Terminal", ["ran-hadoop"], [
+        "Apache Hadoop is Active & Running",
+        "Daemons running (jps):",
+        "  • NameNode          (http://localhost:9870)",
+        "  • DataNode          (http://localhost:9864)",
+        "  • SecondaryNameNode (http://localhost:9868)",
+        "  • ResourceManager   (http://localhost:8088)",
+        "  • NodeManager       (http://localhost:8042)",
         "",
-        "Web Portals in your Browser: http://localhost:9870 | http://localhost:8088",
-        "",
-        "[LIFECYCLE CONTROL]",
-        "  • Press Ctrl+C in this terminal to gracefully stop all daemons.",
-        "  • Closing this terminal tab triggers SIGHUP auto-shutdown (zero memory leak)."
-    ])
-    draw_footer(draw, "Scene 4 / 5", "Cluster Supervisor")
-    scenes.append((img, 5))
-    
-    # Scene 5: Setup Summary
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Ready to Process Big Data with Hadoop", "Hadoop 3.3.6 active • Pseudo-distributed cluster running • Zero residual leaks")
-    draw_info_box(draw, 100, 200, 800, 720, "What Was Accomplished", [
-        "Hadoop 3.3.6 installed and ready.",
-        "HDFS Master (NameNode) & Workers active.",
-        "YARN Resource Manager scheduling enabled.",
-        "Web Management active at localhost:9870.",
-        "Desktop shortcuts created for quick restart."
-    ], border_color="#38BDF8")
-    draw_info_box(draw, 1020, 200, 800, 720, "Next Actions", [
-        "Open a second terminal for MapReduce jobs.",
-        "Track A: Run shortcut './run-wordcount.sh'.",
-        "Track B: Run step-by-step manual commands.",
-        "Monitor jobs in browser at http://localhost:8088.",
-        "Press Ctrl+C in Terminal 1 to stop cluster."
-    ], border_color="#10B981")
-    draw_footer(draw, "Scene 5 / 5", "Ready to Code")
-    scenes.append((img, 4))
-    
-    return scenes
+        "To stop Hadoop anytime: Press Ctrl + C"
+    ], cursor_on=False)
+    draw_footer(draw, "4 / 4")
+    for _ in range(120):
+        save_frame(img_s4)
+
+    return frame_idx
 
 
 # =============================================================================
-# SCENES FOR VIDEO 2: MapReduce Shortcut vs Manual Step-by-Step
+# VIDEO 2: MapReduce WordCount Walkthrough
 # =============================================================================
-def make_video_2_scenes():
-    scenes = []
-    
-    # Scene 1: MapReduce Concepts
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Hadoop MapReduce Architecture & Processing Model", "Distributed Processing Across Commodity Cluster Nodes")
-    draw_info_box(draw, 100, 200, 800, 720, "Core MapReduce Pipeline", [
-        "1. Input Split: 128MB HDFS block splits.",
-        "2. Map Phase: Emits key-value pairs <word, 1>.",
-        "3. Shuffle & Sort: Groups identical keys by hash.",
-        "4. Reduce Phase: Aggregates sums <word, total>.",
-        "5. Output File: Written to HDFS as part-r-00000."
-    ], border_color="#0284C7")
-    draw_info_box(draw, 1020, 200, 800, 720, "Two Execution Tracks", [
-        "Track A (Automated Shortcut):",
-        "  • Run './run-wordcount.sh' in 1 line.",
-        "  • Instant execution & top 25 word frequencies.",
-        "Track B (Manual Step-by-Step Commands):",
-        "  • Complete reference for manual execution.",
-        "  • Raw HDFS mkdir, put, jar, cat & get commands."
-    ], border_color="#F59E0B")
-    draw_footer(draw, "Scene 1 / 5", "Architecture")
-    scenes.append((img, 4))
-    
-    # Scene 2: Track A - Fast 1-Line Shortcut
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Track A: The Automated 1-Line Shortcut (Speed Run)", "Execute complete WordCount job on any file with a single script")
-    draw_terminal(draw, 100, 190, 1720, 750, "Terminal 2: Run WordCount Shortcut", [
-        "./run-wordcount.sh sample_input.txt"
-    ], [
-        "[1/5] Checking Hadoop cluster status... [✓] HDFS is reachable.",
-        "[2/5] Locating MapReduce Examples JAR... [✓] Found hadoop-mapreduce-examples-3.3.6.jar",
-        "[3/5] Uploading 'sample_input.txt' to HDFS at /wordcount_demo/input...",
-        "[4/5] Executing MapReduce WordCount Job on YARN...",
-        "      map 0% reduce 0% -> map 100% reduce 100%",
-        "[✓] MapReduce job completed successfully!",
-        "[5/5] Fetching WordCount Results from HDFS (/wordcount_demo/output)...",
-        "========================================",
+def render_video_2_frames(out_dir, fps=30):
+    os.makedirs(out_dir, exist_ok=True)
+    frame_idx = 0
+
+    def save_frame(img):
+        nonlocal frame_idx
+        fpath = os.path.join(out_dir, f"frame_{frame_idx:05d}.png")
+        img.save(fpath)
+        frame_idx += 1
+
+    # Scene 1: Shortcut Method (6s)
+    cmd_s1 = "./run-wordcount.sh sample_input.txt"
+    outs_s1 = [
+        "[1/5] Checking cluster status... [✓] HDFS is reachable.",
+        "[2/5] Using hadoop-mapreduce-examples-3.3.6.jar",
+        "[3/5] Uploading sample_input.txt to HDFS at /wordcount_demo/input...",
+        "[4/5] Running MapReduce WordCount job on YARN...",
+        "      map 100% reduce 100%",
+        "[✓] Job completed successfully!",
+        "[5/5] WordCount Results:",
+        "----------------------------------------",
         "WORD                      | COUNT",
         "----------------------------------------",
         "and                       | 14",
@@ -277,144 +247,118 @@ def make_video_2_scenes():
         "Hadoop                    | 9",
         "distributed               | 5",
         "MapReduce                 | 4",
-        "----------------------------------------",
-        "Total unique words processed: 118"
-    ])
-    draw_footer(draw, "Scene 2 / 5", "Track A: Shortcut")
-    scenes.append((img, 5))
-    
-    # Scene 3: Track B - Manual Commands (Part 1: HDFS Setup)
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Track B: Manual 1-by-1 Command Reference", "Steps 1 to 4: Cluster Check, Directory Creation & Ingestion")
-    draw_terminal(draw, 100, 190, 1720, 750, "Terminal 2: Raw HDFS Commands (Line-by-Line)", [
+        "----------------------------------------"
+    ]
+    for f in range(180):
+        img = Image.new("RGB", (1920, 1080), "#0B0F19")
+        draw = ImageDraw.Draw(img)
+        draw_header(draw, "Option 1: Quick Shortcut Script", "Runs the entire WordCount job with one command")
+        type_len = int(len(cmd_s1) * min(f / 40.0, 1.0))
+        out_count = 0
+        if f > 40:
+            out_count = int(len(outs_s1) * min((f - 40) / 90.0, 1.0))
+        draw_terminal(draw, 100, 180, 1720, 760, "Terminal", [cmd_s1[:type_len]], outs_s1[:out_count], cursor_on=(f % 16 < 8))
+        draw_footer(draw, "1 / 3")
+        save_frame(img)
+
+    # Scene 2: Manual Commands Step-by-Step (7s)
+    cmds_s2 = [
         "jps",
         "hdfs dfs -mkdir -p /my_data/input",
         "hdfs dfs -put -f sample_input.txt /my_data/input/",
-        "hdfs dfs -ls /my_data/input"
-    ], [
-        "# Step 1: Check running daemons",
-        "18234 NameNode | 18356 DataNode | 18612 ResourceManager | 18745 NodeManager",
-        "",
-        "# Step 2: Create HDFS input directory",
-        "[✓] Directory /my_data/input created in HDFS.",
-        "",
-        "# Step 3: Put local text file into HDFS",
-        "[✓] File sample_input.txt copied to HDFS.",
-        "",
-        "# Step 4: Verify file exists in HDFS",
-        "Found 1 items",
-        "-rw-r--r--   1 user supergroup       2041 2026-10-27 12:00 /my_data/input/sample_input.txt"
-    ])
-    draw_footer(draw, "Scene 3 / 5", "Track B: Steps 1-4")
-    scenes.append((img, 5))
-    
-    # Scene 4: Track B - Manual Commands (Part 2: Jar Execution & Output)
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Track B: Manual 1-by-1 Command Reference", "Steps 5 to 7: Running MapReduce Jar, Viewing Output & Exporting")
-    draw_terminal(draw, 100, 190, 1720, 750, "Terminal 2: Running the MapReduce Jar & Output Inspection", [
         "hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output",
-        "hdfs dfs -ls /my_data/output",
-        "hdfs dfs -cat /my_data/output/part-r-00000 | head -n 10",
-        "hdfs dfs -get /my_data/output/part-r-00000 ./wordcount_results.txt"
-    ], [
-        "# Step 5: Execute WordCount JAR",
-        "INFO mapreduce.Job: Running job: job_1729000000000_0001",
-        "INFO mapreduce.Job: Job job_1729000000000_0001 completed successfully",
-        "",
-        "# Step 6: Verify output files",
-        "/my_data/output/_SUCCESS",
-        "/my_data/output/part-r-00000",
-        "",
-        "# Step 7: View results and download to local filesystem",
-        "Apache\t3 | Hadoop\t9 | MapReduce\t4 | distributed\t5",
-        "[✓] Exported results to local file: ./wordcount_results.txt"
-    ])
-    draw_footer(draw, "Scene 4 / 5", "Track B: Steps 5-7")
-    scenes.append((img, 5))
-    
-    # Scene 5: Python Streaming & Graceful Shutdown
-    img = Image.new("RGB", (1920, 1080), "#0B0F19")
-    draw = ImageDraw.Draw(img)
-    draw_header(draw, "Python Streaming MapReduce & Clean Teardown", "Writing custom Python Mappers & Graceful Auto-Shutdown with Ctrl+C")
-    draw_info_box(draw, 100, 200, 800, 720, "Python Streaming Command", [
-        "chmod +x mapper.py reducer.py",
-        "hadoop jar $HADOOP_HOME/.../hadoop-streaming-*.jar \\",
-        "   -input /my_data/input \\",
-        "   -output /my_data/python_out \\",
-        "   -mapper ./mapper.py \\",
-        "   -reducer ./reducer.py",
-        "",
-        "Allows writing MapReduce in pure Python!"
-    ], border_color="#38BDF8")
-    draw_info_box(draw, 1020, 200, 800, 720, "Graceful Shutdown (Zero RAM Leaks)", [
-        "In Terminal 1: Press Ctrl + C",
-        "  • stop-yarn.sh triggers automatically.",
-        "  • stop-dfs.sh triggers automatically.",
-        "  • JVM processes terminated cleanly.",
-        "  • Ports 9000 & 9870 freed.",
-        "  • Zero orphaned memory on the computer!"
-    ], border_color="#10B981")
-    draw_footer(draw, "Scene 5 / 5", "Python & Teardown")
-    scenes.append((img, 4))
-    
-    return scenes
+        "hdfs dfs -cat /my_data/output/part-r-00000 | head -n 10"
+    ]
+    outs_s2 = [
+        "18234 NameNode | 18356 DataNode | 18612 ResourceManager | 18745 NodeManager",
+        "[✓] Directory created in HDFS",
+        "[✓] File uploaded to HDFS",
+        "INFO mapreduce.Job: Job completed successfully",
+        "Apache\t3 | Hadoop\t9 | MapReduce\t4 | distributed\t5"
+    ]
+    for f in range(210):
+        img = Image.new("RGB", (1920, 1080), "#0B0F19")
+        draw = ImageDraw.Draw(img)
+        draw_header(draw, "Option 2: Step-by-Step Manual Commands", "Running MapReduce line by line")
+        step_idx = min(int(f / 40.0) + 1, len(cmds_s2))
+        draw_terminal(draw, 100, 180, 1720, 760, "Terminal", cmds_s2[:step_idx], outs_s2[:step_idx])
+        draw_footer(draw, "2 / 3")
+        save_frame(img)
+
+    # Scene 3: Clean Shutdown (4s)
+    img_s3 = Image.new("RGB", (1920, 1080), "#0B0F19")
+    draw = ImageDraw.Draw(img_s3)
+    draw_header(draw, "Stopping Hadoop", "Stop all daemons cleanly")
+    draw_terminal(draw, 100, 180, 1720, 760, "Terminal", ["^C"], [
+        "[ran-hadoop] Caught Ctrl+C signal. Stopping cluster...",
+        "Stopping YARN daemons...",
+        "Stopping HDFS daemons...",
+        "[✓] All Hadoop daemons stopped cleanly. No orphaned processes left."
+    ], cursor_on=False)
+    draw_footer(draw, "3 / 3")
+    for _ in range(120):
+        save_frame(img_s3)
+
+    return frame_idx
 
 
-def compile_video(scenes, output_path, title_sound=440):
-    os.makedirs(TEMP_FRAMES_DIR, exist_ok=True)
-    frame_idx = 0
-    fps = 30
+def compile_video_from_frames(frames_dir, output_path, total_frames, fps=30):
+    duration = total_frames / fps
+    print(f"[✓] Compiling {total_frames} frames into {output_path} ({duration:.1f}s)...")
     
-    print(f"[*] Rendering {len(scenes)} scenes to frames...")
-    for scene_img, duration_sec in scenes:
-        num_frames = int(duration_sec * fps)
-        for _ in range(num_frames):
-            frame_file = os.path.join(TEMP_FRAMES_DIR, f"frame_{frame_idx:05d}.png")
-            scene_img.save(frame_file)
-            frame_idx += 1
-            
-    print(f"[✓] Generated {frame_idx} frames. Compiling MP4 video with FFmpeg...")
+    # Clean quiet audio track so HTML5 video players load properly with no loud noise
+    audio_expr = "anullsrc=channel_layout=stereo:sample_rate=44100"
     
     ffmpeg_cmd = [
         "ffmpeg", "-y",
         "-framerate", str(fps),
-        "-i", os.path.join(TEMP_FRAMES_DIR, "frame_%05d.png"),
-        "-f", "lavfi", "-i", f"sine=frequency={title_sound}:duration={frame_idx/fps}",
+        "-i", os.path.join(frames_dir, "frame_%05d.png"),
+        "-f", "lavfi", "-i", audio_expr,
         "-c:v", "libx264",
         "-profile:v", "high",
         "-level:v", "4.0",
         "-pix_fmt", "yuv420p",
         "-c:a", "aac",
         "-b:a", "128k",
-        "-shortest",
+        "-t", str(duration),
         output_path
     ]
     
     res = subprocess.run(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if res.returncode != 0:
-        print(f"[ERROR] FFmpeg error: {res.stderr.decode('utf-8')}")
+        print(f"[ERROR] FFmpeg compilation failed: {res.stderr.decode('utf-8')}")
         sys.exit(1)
         
-    shutil.rmtree(TEMP_FRAMES_DIR, ignore_errors=True)
+    shutil.rmtree(frames_dir, ignore_errors=True)
     print(f"[✓] Successfully compiled: {output_path}")
 
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+    fps = 30
     
-    v1_path = os.path.join(OUTPUT_DIR, "lab_setup_walkthrough.mp4")
-    print(f"\n--- Building Video 1: {v1_path} ---")
-    scenes_v1 = make_video_1_scenes()
-    compile_video(scenes_v1, v1_path, title_sound=523)
+    # Video 1
+    print("\n--- Building Video 1: setup_walkthrough.mp4 ---")
+    frames_v1_dir = "/tmp/v1_frames"
+    shutil.rmtree(frames_v1_dir, ignore_errors=True)
+    count_v1 = render_video_1_frames(frames_v1_dir, fps=fps)
+    v1_main_path = os.path.join(OUTPUT_DIR, "setup_walkthrough.mp4")
+    compile_video_from_frames(frames_v1_dir, v1_main_path, count_v1, fps=fps)
+    # Copies for existing links
+    shutil.copyfile(v1_main_path, os.path.join(OUTPUT_DIR, "hadoop_universal_setup_walkthrough.mp4"))
+    shutil.copyfile(v1_main_path, os.path.join(OUTPUT_DIR, "lab_setup_walkthrough.mp4"))
     
-    v2_path = os.path.join(OUTPUT_DIR, "mapreduce_shortcut_vs_manual.mp4")
-    print(f"\n--- Building Video 2: {v2_path} ---")
-    scenes_v2 = make_video_2_scenes()
-    compile_video(scenes_v2, v2_path, title_sound=659)
+    # Video 2
+    print("\n--- Building Video 2: mapreduce_guide.mp4 ---")
+    frames_v2_dir = "/tmp/v2_frames"
+    shutil.rmtree(frames_v2_dir, ignore_errors=True)
+    count_v2 = render_video_2_frames(frames_v2_dir, fps=fps)
+    v2_path = os.path.join(OUTPUT_DIR, "mapreduce_guide.mp4")
+    compile_video_from_frames(frames_v2_dir, v2_path, count_v2, fps=fps)
+    # Copy for existing links
+    shutil.copyfile(v2_path, os.path.join(OUTPUT_DIR, "mapreduce_shortcut_vs_manual.mp4"))
     
-    print("\n[✓] Both videos successfully generated!")
+    print("\n[✓] Both MP4 videos compiled cleanly with zero audio noise!")
 
 if __name__ == '__main__':
     main()

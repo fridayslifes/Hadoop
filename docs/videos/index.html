@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apache Hadoop Universal Architecture & MapReduce Video Demos</title>
+    <title>Apache Hadoop Installation & MapReduce Video Guide</title>
     <style>
         :root {
             --bg-primary: #0F172A;
             --bg-secondary: #1E293B;
-            --bg-card: #182234;
             --border: #334155;
             --accent: #0284C7;
             --accent-hover: #0369A1;
-            --success: #10B981;
             --text-main: #F8FAFC;
             --text-muted: #94A3B8;
             --code-bg: #0B0F19;
@@ -33,7 +31,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 0 auto;
         }
 
@@ -41,62 +39,41 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-bottom: 20px;
-            border-bottom: 2px solid var(--border);
-            margin-bottom: 28px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
             flex-wrap: wrap;
             gap: 16px;
         }
 
-        .badge {
-            background-color: var(--accent);
-            color: white;
-            font-size: 12px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: inline-block;
-            margin-bottom: 6px;
-        }
-
         h1 {
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--text-main);
+            font-size: 26px;
+            font-weight: 700;
         }
 
         p.subtitle {
             color: var(--text-muted);
-            font-size: 15px;
-            margin-top: 4px;
-        }
-
-        .links-group {
-            display: flex;
-            gap: 12px;
+            font-size: 14px;
+            margin-top: 2px;
         }
 
         .btn {
             background-color: var(--accent);
             color: white;
-            padding: 10px 18px;
-            border-radius: 8px;
+            padding: 9px 16px;
+            border-radius: 6px;
             text-decoration: none;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
+            gap: 6px;
             border: none;
             cursor: pointer;
         }
 
         .btn:hover {
             background-color: var(--accent-hover);
-            transform: translateY(-1px);
         }
 
         .btn-secondary {
@@ -105,27 +82,21 @@
             color: var(--text-main);
         }
 
-        .btn-secondary:hover {
-            background-color: #27354A;
-        }
-
-        /* Video Showcase */
         .video-tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 16px;
+            gap: 8px;
+            margin-bottom: 14px;
         }
 
         .tab-btn {
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 10px 18px;
+            border-radius: 6px;
             border: 1px solid var(--border);
             background-color: var(--bg-secondary);
             color: var(--text-muted);
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
         .tab-btn.active {
@@ -136,93 +107,63 @@
 
         .player-wrapper {
             background-color: #000;
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
             border: 1px solid var(--border);
             margin-bottom: 24px;
-            position: relative;
         }
 
         video {
             width: 100%;
             height: auto;
-            max-height: 640px;
+            max-height: 600px;
             display: block;
-        }
-
-        .section-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 14px;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
 
         .cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-            gap: 20px;
-            margin-bottom: 32px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
         .card {
             background-color: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 20px;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
+            border-radius: 8px;
+            padding: 16px;
         }
 
         .card-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-main);
-        }
-
-        .tag {
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 4px;
+            font-size: 15px;
             font-weight: 600;
+            margin-bottom: 8px;
         }
-
-        .tag-win { background-color: #1E3A8A; color: #93C5FD; }
-        .tag-linux { background-color: #064E3B; color: #6EE7B7; }
 
         .code-box {
             background-color: var(--code-bg);
             border: 1px solid #2A374A;
             border-radius: 6px;
-            padding: 12px;
+            padding: 10px 12px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             font-size: 13px;
             color: #A6E3A1;
             position: relative;
             word-break: break-all;
-            margin-top: 8px;
+            margin-top: 6px;
         }
 
         .copy-btn {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            top: 7px;
+            right: 7px;
             background-color: #242938;
             border: 1px solid #374151;
             color: #CBD5E1;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 4px;
             font-size: 11px;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
         .copy-btn:hover {
@@ -234,29 +175,29 @@
             list-style: none;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
         }
 
         .step-item {
             background-color: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 14px 18px;
+            border-radius: 6px;
+            padding: 12px 16px;
         }
 
         .step-num {
             color: var(--accent);
-            font-weight: 800;
+            font-weight: 700;
             margin-right: 6px;
         }
 
         footer {
-            margin-top: 40px;
-            padding-top: 20px;
+            margin-top: 36px;
+            padding-top: 16px;
             border-top: 1px solid var(--border);
             text-align: center;
             color: var(--text-muted);
-            font-size: 14px;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -264,48 +205,41 @@
     <div class="container">
         <header>
             <div>
-                <span class="badge">Apache Hadoop 3.3.6 / 3.4.x</span>
-                <h1>Universal Setup & MapReduce Video Demos</h1>
-                <p class="subtitle">Universal 1-Click Installation • Fast Shortcut vs Complete 1-by-1 Manual Reference</p>
+                <h1>Apache Hadoop Video Guide</h1>
+                <p class="subtitle">Installation & MapReduce WordCount Walkthrough</p>
             </div>
-            <div class="links-group">
+            <div style="display: flex; gap: 8px;">
                 <a href="../Hadoop_Complete_Guide_Install_Run_WordCount.pdf" class="btn" download>
-                    📄 Download PDF Guide
+                    📄 PDF Guide
                 </a>
                 <a href="https://github.com/fridayslifes/Hadoop" class="btn btn-secondary" target="_blank">
-                    ⭐ View on GitHub
+                    GitHub Repo
                 </a>
             </div>
         </header>
 
-        <!-- Video Selection Tabs -->
         <div class="video-tabs">
             <button class="tab-btn active" onclick="switchVideo('v1')">
-                📹 Video 1: Universal 1-Click Setup Walkthrough
+                Video 1: Hadoop Setup Walkthrough
             </button>
             <button class="tab-btn" onclick="switchVideo('v2')">
-                ⚡ Video 2: MapReduce Masterclass (Shortcut vs Manual 1-by-1)
+                Video 2: MapReduce WordCount Walkthrough
             </button>
         </div>
 
-        <!-- Video Player -->
         <div class="player-wrapper">
             <video id="mainVideo" controls autoplay muted>
-                <source id="videoSource" src="lab_setup_walkthrough.mp4" type="video/mp4">
-                Your browser does not support the video tag.
+                <source id="videoSource" src="setup_walkthrough.mp4" type="video/mp4">
+                Your browser does not support video.
             </video>
         </div>
 
-        <!-- Quick Copy Reference for Video 1 -->
         <div id="v1-section">
-            <h2 class="section-title">⚡ Universal Installation Commands (Shown in Video 1)</h2>
+            <h2 style="font-size: 18px; margin-bottom: 12px;">Installation Commands</h2>
             <div class="cards-grid">
                 <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">Windows 1-Liner (PowerShell)</span>
-                        <span class="tag tag-win">PowerShell</span>
-                    </div>
-                    <p style="color: var(--text-muted); font-size: 13px;">Checks/installs Git & WSL, saves to Desktop, and configures Hadoop automatically.</p>
+                    <div class="card-title">Windows (PowerShell)</div>
+                    <p style="color: var(--text-muted); font-size: 13px;">Checks for Git & WSL, saves to Desktop, and installs Hadoop.</p>
                     <div class="code-box">
                         <span id="cmd-ps">irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup.ps1 | iex</span>
                         <button class="copy-btn" onclick="copyText('cmd-ps')">Copy</button>
@@ -313,11 +247,8 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">Linux / WSL Terminal 1-Liner</span>
-                        <span class="tag tag-linux">Bash</span>
-                    </div>
-                    <p style="color: var(--text-muted); font-size: 13px;">Piped unattended installation with 16-thread download and global CLI linking.</p>
+                    <div class="card-title">Linux / WSL Terminal</div>
+                    <p style="color: var(--text-muted); font-size: 13px;">One-line automated installation for Linux.</p>
                     <div class="code-box">
                         <span id="cmd-bash">curl -sSL https://raw.githubusercontent.com/fridayslifes/Hadoop/main/install.sh | bash</span>
                         <button class="copy-btn" onclick="copyText('cmd-bash')">Copy</button>
@@ -325,11 +256,8 @@
                 </div>
 
                 <div class="card">
-                    <div class="card-header">
-                        <span class="card-title">Start Cluster Supervisor</span>
-                        <span class="tag tag-linux">Terminal</span>
-                    </div>
-                    <p style="color: var(--text-muted); font-size: 13px;">Foreground lifecycle monitor with automatic Ctrl+C and terminal close clean shutdown.</p>
+                    <div class="card-title">Start Hadoop</div>
+                    <p style="color: var(--text-muted); font-size: 13px;">Starts HDFS and YARN daemons in foreground.</p>
                     <div class="code-box">
                         <span id="cmd-ran">ran-hadoop</span>
                         <button class="copy-btn" onclick="copyText('cmd-ran')">Copy</button>
@@ -338,78 +266,59 @@
             </div>
         </div>
 
-        <!-- Quick Copy Reference for Video 2 -->
         <div id="v2-section">
-            <h2 class="section-title">📋 MapReduce Command Reference (Shown in Video 2)</h2>
+            <h2 style="font-size: 18px; margin-bottom: 12px;">MapReduce Commands</h2>
             
-            <div class="card" style="margin-bottom: 20px;">
-                <div class="card-header">
-                    <span class="card-title">Track A: The Automated 1-Line Shortcut</span>
-                    <span class="tag tag-linux">Speed Run</span>
-                </div>
-                <p style="color: var(--text-muted); font-size: 13px;">Executes HDFS directory setup, uploads text, runs YARN MapReduce, and prints the top 25 word frequencies.</p>
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-title">Method 1: Shortcut Script</div>
                 <div class="code-box">
                     <span id="cmd-wc">./run-wordcount.sh sample_input.txt</span>
                     <button class="copy-btn" onclick="copyText('cmd-wc')">Copy</button>
                 </div>
             </div>
 
-            <h3 style="font-size: 16px; margin-bottom: 12px; color: #F59E0B;">Track B: Step-by-Step 1-by-1 Manual Commands:</h3>
+            <div class="card-title" style="margin-bottom: 10px;">Method 2: Manual Commands Step-by-Step</div>
             <ul class="step-list">
                 <li class="step-item">
-                    <p><span class="step-num">Step 1:</span> Check active Hadoop daemons:</p>
+                    <p><span class="step-num">Step 1:</span> Check daemons</p>
                     <div class="code-box">
                         <span id="s1">jps</span>
                         <button class="copy-btn" onclick="copyText('s1')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
-                    <p><span class="step-num">Step 2:</span> Create an HDFS input directory:</p>
+                    <p><span class="step-num">Step 2:</span> Create HDFS directory</p>
                     <div class="code-box">
                         <span id="s2">hdfs dfs -mkdir -p /my_data/input</span>
                         <button class="copy-btn" onclick="copyText('s2')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
-                    <p><span class="step-num">Step 3:</span> Upload local text file to HDFS:</p>
+                    <p><span class="step-num">Step 3:</span> Upload input file</p>
                     <div class="code-box">
                         <span id="s3">hdfs dfs -put -f sample_input.txt /my_data/input/</span>
                         <button class="copy-btn" onclick="copyText('s3')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
-                    <p><span class="step-num">Step 4:</span> Verify file existence in HDFS:</p>
+                    <p><span class="step-num">Step 4:</span> Run MapReduce jar</p>
                     <div class="code-box">
-                        <span id="s4">hdfs dfs -ls /my_data/input</span>
+                        <span id="s4">hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output</span>
                         <button class="copy-btn" onclick="copyText('s4')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
-                    <p><span class="step-num">Step 5:</span> Execute the MapReduce JAR manually:</p>
+                    <p><span class="step-num">Step 5:</span> View results</p>
                     <div class="code-box">
-                        <span id="s5">hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output</span>
+                        <span id="s5">hdfs dfs -cat /my_data/output/part-r-00000 | head -n 25</span>
                         <button class="copy-btn" onclick="copyText('s5')">Copy</button>
-                    </div>
-                </li>
-                <li class="step-item">
-                    <p><span class="step-num">Step 6:</span> Inspect MapReduce output block in HDFS:</p>
-                    <div class="code-box">
-                        <span id="s6">hdfs dfs -cat /my_data/output/part-r-00000 | head -n 25</span>
-                        <button class="copy-btn" onclick="copyText('s6')">Copy</button>
-                    </div>
-                </li>
-                <li class="step-item">
-                    <p><span class="step-num">Step 7:</span> Download output back to local computer:</p>
-                    <div class="code-box">
-                        <span id="s7">hdfs dfs -get /my_data/output/part-r-00000 ./wordcount_results.txt</span>
-                        <button class="copy-btn" onclick="copyText('s7')">Copy</button>
                     </div>
                 </li>
             </ul>
         </div>
 
         <footer>
-            <p>Apache Hadoop Automated Quickstart & Video Guides • Created for fridayslifes/Hadoop • Open Source (MIT)</p>
+            <p>Apache Hadoop Installation Guide • fridayslifes/Hadoop</p>
         </footer>
     </div>
 
@@ -423,16 +332,14 @@
             
             if (id === 'v1') {
                 tabs[0].classList.add('active');
-                source.src = 'lab_setup_walkthrough.mp4';
+                source.src = 'setup_walkthrough.mp4';
                 video.load();
                 video.play();
-                document.getElementById('v1-section').scrollIntoView({ behavior: 'smooth' });
             } else {
                 tabs[1].classList.add('active');
-                source.src = 'mapreduce_shortcut_vs_manual.mp4';
+                source.src = 'mapreduce_guide.mp4';
                 video.load();
                 video.play();
-                document.getElementById('v2-section').scrollIntoView({ behavior: 'smooth' });
             }
         }
 
@@ -446,7 +353,7 @@
                 setTimeout(() => {
                     btn.innerText = originalText;
                     btn.style.backgroundColor = '';
-                }, 1800);
+                }, 1500);
             });
         }
     </script>
