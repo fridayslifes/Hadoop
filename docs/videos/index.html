@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apache Hadoop Lab Walkthrough & MapReduce Video Demos</title>
+    <style>
+        :root {
+            --bg-primary: #0F172A;
+            --bg-secondary: #1E293B;
+            --bg-card: #182234;
+            --border: #334155;
+            --accent: #0284C7;
+            --accent-hover: #0369A1;
+            --success: #10B981;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --code-bg: #0B0F19;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .badge {
+            background-color: var(--accent);
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 15px;
+            margin-top: 4px;
+        }
+
+        .links-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            background-color: var(--accent);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background-color: #27354A;
+        }
+
+        /* Video Showcase */
+        .video-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background-color: var(--bg-secondary);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .player-wrapper {
+            background-color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+            max-height: 640px;
+            display: block;
+        }
+
+        /* Command Cards Section */
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .tag {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .tag-win { background-color: #1E3A8A; color: #93C5FD; }
+        .tag-linux { background-color: #064E3B; color: #6EE7B7; }
+        .tag-viva { background-color: #78350F; color: #FDE68A; }
+
+        .code-box {
+            background-color: var(--code-bg);
+            border: 1px solid #2A374A;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            color: #A6E3A1;
+            position: relative;
+            word-break: break-all;
+            margin-top: 8px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: #242938;
+            border: 1px solid #374151;
+            color: #CBD5E1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        /* Step-by-step list */
+        .step-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .step-item {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 18px;
+        }
+
+        .step-num {
+            color: var(--accent);
+            font-weight: 800;
+            margin-right: 6px;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <span class="badge">Apache Hadoop 3.3.6 / 3.4.x</span>
+                <h1>Lab PC Video Demonstrations & Practical Reference</h1>
+                <p class="subtitle">1-Click Lab PC Setup • Fast Shortcut vs Step-by-Step 1-by-1 Manual Commands</p>
+            </div>
+            <div class="links-group">
+                <a href="../Hadoop_Complete_Guide_Install_Run_WordCount.pdf" class="btn" download>
+                    📄 Download PDF Guide
+                </a>
+                <a href="https://github.com/fridayslifes/Hadoop" class="btn btn-secondary" target="_blank">
+                    ⭐ View on GitHub
+                </a>
+            </div>
+        </header>
+
+        <!-- Video Selection Tabs -->
+        <div class="video-tabs">
+            <button class="tab-btn active" onclick="switchVideo('v1')">
+                📹 Video 1: 1-Click Lab PC Setup Walkthrough
+            </button>
+            <button class="tab-btn" onclick="switchVideo('v2')">
+                ⚡ Video 2: MapReduce Masterclass (Shortcut vs Manual 1-by-1)
+            </button>
+        </div>
+
+        <!-- Video Player -->
+        <div class="player-wrapper">
+            <video id="mainVideo" controls autoplay muted>
+                <source id="videoSource" src="lab_setup_walkthrough.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <!-- Quick Copy Reference for Video 1 -->
+        <div id="v1-section">
+            <h2 class="section-title">⚡ 1-Click Lab PC Commands (Shown in Video 1)</h2>
+            <div class="cards-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Windows Lab PC (PowerShell 1-Liner)</span>
+                        <span class="tag tag-win">PowerShell</span>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 13px;">Saves to <code>%USERPROFILE%\Desktop\Hadoop</code> and configures WSL + Hadoop automatically.</p>
+                    <div class="code-box">
+                        <span id="cmd-ps">irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup-lab.ps1 | iex</span>
+                        <button class="copy-btn" onclick="copyText('cmd-ps')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Linux / WSL Terminal 1-Liner</span>
+                        <span class="tag tag-linux">Bash</span>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 13px;">Piped unattended installation with 16-thread download and global CLI linking.</p>
+                    <div class="code-box">
+                        <span id="cmd-bash">curl -sSL https://raw.githubusercontent.com/fridayslifes/Hadoop/main/install.sh | bash</span>
+                        <button class="copy-btn" onclick="copyText('cmd-bash')">Copy</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Start Cluster Supervisor</span>
+                        <span class="tag tag-linux">Terminal</span>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 13px;">Foreground lifecycle monitor with automatic Ctrl+C and terminal close clean shutdown.</p>
+                    <div class="code-box">
+                        <span id="cmd-ran">ran-hadoop</span>
+                        <button class="copy-btn" onclick="copyText('cmd-ran')">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Copy Reference for Video 2 -->
+        <div id="v2-section">
+            <h2 class="section-title">📋 MapReduce Viva & Practical Exam Commands (Shown in Video 2)</h2>
+            
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <span class="card-title">Track A: The Fast 1-Line Shortcut</span>
+                    <span class="tag tag-linux">Speed Run</span>
+                </div>
+                <p style="color: var(--text-muted); font-size: 13px;">Executes HDFS directory setup, uploads text, runs YARN MapReduce, and prints the top 25 word frequencies.</p>
+                <div class="code-box">
+                    <span id="cmd-wc">./run-wordcount.sh sample_input.txt</span>
+                    <button class="copy-btn" onclick="copyText('cmd-wc')">Copy</button>
+                </div>
+            </div>
+
+            <h3 style="font-size: 16px; margin-bottom: 12px; color: #F59E0B;">Track B: Step-by-Step 1-by-1 Manual Commands (for Viva & Practical Exams):</h3>
+            <ul class="step-list">
+                <li class="step-item">
+                    <p><span class="step-num">Step 1:</span> Check running daemons in terminal:</p>
+                    <div class="code-box">
+                        <span id="s1">jps</span>
+                        <button class="copy-btn" onclick="copyText('s1')">Copy</button>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <p><span class="step-num">Step 2:</span> Create an HDFS input directory:</p>
+                    <div class="code-box">
+                        <span id="s2">hdfs dfs -mkdir -p /my_lab/input</span>
+                        <button class="copy-btn" onclick="copyText('s2')">Copy</button>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <p><span class="step-num">Step 3:</span> Upload local text file to HDFS:</p>
+                    <div class="code-box">
+                        <span id="s3">hdfs dfs -put -f sample_input.txt /my_lab/input/</span>
+                        <button class="copy-btn" onclick="copyText('s3')">Copy</button>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <p><span class="step-num">Step 4:</span> Verify file existence in HDFS:</p>
+                    <div class="code-box">
+                        <span id="s4">hdfs dfs -ls /my_lab/input</span>
+                        <button class="copy-btn" onclick="copyText('s4')">Copy</button>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <p><span class="step-num">Step 5:</span> Execute the MapReduce JAR manually:</p>
+                    <div class="code-box">
+                        <span id="s5">hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_lab/input /my_lab/output</span>
+                        <button class="copy-btn" onclick="copyText('s5')">Copy</button>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <p><span class="step-num">Step 6:</span> Inspect MapReduce output block in HDFS:</p>
+                    <div class="code-box">
+                        <span id="s6">hdfs dfs -cat /my_lab/output/part-r-00000 | head -n 25</span>
+                        <button class="copy-btn" onclick="copyText('s6')">Copy</button>
+                    </div>
+                </li>
+                <li class="step-item">
+                    <p><span class="step-num">Step 7:</span> Download output back to local computer:</p>
+                    <div class="code-box">
+                        <span id="s7">hdfs dfs -get /my_lab/output/part-r-00000 ./lab_results.txt</span>
+                        <button class="copy-btn" onclick="copyText('s7')">Copy</button>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>Apache Hadoop Automated Lab Quickstart & Video Guides • Created for fridayslifes/Hadoop • Open Source (MIT)</p>
+        </footer>
+    </div>
+
+    <script>
+        function switchVideo(id) {
+            const video = document.getElementById('mainVideo');
+            const source = document.getElementById('videoSource');
+            const tabs = document.querySelectorAll('.tab-btn');
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            if (id === 'v1') {
+                tabs[0].classList.add('active');
+                source.src = 'lab_setup_walkthrough.mp4';
+                video.load();
+                video.play();
+                document.getElementById('v1-section').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                tabs[1].classList.add('active');
+                source.src = 'mapreduce_shortcut_vs_manual.mp4';
+                video.load();
+                video.play();
+                document.getElementById('v2-section').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target;
+                const originalText = btn.innerText;
+                btn.innerText = 'Copied!';
+                btn.style.backgroundColor = '#10B981';
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.backgroundColor = '';
+                }, 1800);
+            });
+        }
+    </script>
+</body>
+</html>
