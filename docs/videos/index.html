@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apache Hadoop Lab Walkthrough & MapReduce Video Demos</title>
+    <title>Apache Hadoop Universal Architecture & MapReduce Video Demos</title>
     <style>
         :root {
             --bg-primary: #0F172A;
@@ -151,7 +151,6 @@
             display: block;
         }
 
-        /* Command Cards Section */
         .section-title {
             font-size: 20px;
             font-weight: 700;
@@ -198,7 +197,6 @@
 
         .tag-win { background-color: #1E3A8A; color: #93C5FD; }
         .tag-linux { background-color: #064E3B; color: #6EE7B7; }
-        .tag-viva { background-color: #78350F; color: #FDE68A; }
 
         .code-box {
             background-color: var(--code-bg);
@@ -232,7 +230,6 @@
             color: white;
         }
 
-        /* Step-by-step list */
         .step-list {
             list-style: none;
             display: flex;
@@ -268,8 +265,8 @@
         <header>
             <div>
                 <span class="badge">Apache Hadoop 3.3.6 / 3.4.x</span>
-                <h1>Lab PC Video Demonstrations & Practical Reference</h1>
-                <p class="subtitle">1-Click Lab PC Setup • Fast Shortcut vs Step-by-Step 1-by-1 Manual Commands</p>
+                <h1>Universal Setup & MapReduce Video Demos</h1>
+                <p class="subtitle">Universal 1-Click Installation • Fast Shortcut vs Complete 1-by-1 Manual Reference</p>
             </div>
             <div class="links-group">
                 <a href="../Hadoop_Complete_Guide_Install_Run_WordCount.pdf" class="btn" download>
@@ -284,7 +281,7 @@
         <!-- Video Selection Tabs -->
         <div class="video-tabs">
             <button class="tab-btn active" onclick="switchVideo('v1')">
-                📹 Video 1: 1-Click Lab PC Setup Walkthrough
+                📹 Video 1: Universal 1-Click Setup Walkthrough
             </button>
             <button class="tab-btn" onclick="switchVideo('v2')">
                 ⚡ Video 2: MapReduce Masterclass (Shortcut vs Manual 1-by-1)
@@ -301,16 +298,16 @@
 
         <!-- Quick Copy Reference for Video 1 -->
         <div id="v1-section">
-            <h2 class="section-title">⚡ 1-Click Lab PC Commands (Shown in Video 1)</h2>
+            <h2 class="section-title">⚡ Universal Installation Commands (Shown in Video 1)</h2>
             <div class="cards-grid">
                 <div class="card">
                     <div class="card-header">
-                        <span class="card-title">Windows Lab PC (PowerShell 1-Liner)</span>
+                        <span class="card-title">Windows 1-Liner (PowerShell)</span>
                         <span class="tag tag-win">PowerShell</span>
                     </div>
-                    <p style="color: var(--text-muted); font-size: 13px;">Saves to <code>%USERPROFILE%\Desktop\Hadoop</code> and configures WSL + Hadoop automatically.</p>
+                    <p style="color: var(--text-muted); font-size: 13px;">Checks/installs Git & WSL, saves to Desktop, and configures Hadoop automatically.</p>
                     <div class="code-box">
-                        <span id="cmd-ps">irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup-lab.ps1 | iex</span>
+                        <span id="cmd-ps">irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup.ps1 | iex</span>
                         <button class="copy-btn" onclick="copyText('cmd-ps')">Copy</button>
                     </div>
                 </div>
@@ -343,11 +340,11 @@
 
         <!-- Quick Copy Reference for Video 2 -->
         <div id="v2-section">
-            <h2 class="section-title">📋 MapReduce Viva & Practical Exam Commands (Shown in Video 2)</h2>
+            <h2 class="section-title">📋 MapReduce Command Reference (Shown in Video 2)</h2>
             
             <div class="card" style="margin-bottom: 20px;">
                 <div class="card-header">
-                    <span class="card-title">Track A: The Fast 1-Line Shortcut</span>
+                    <span class="card-title">Track A: The Automated 1-Line Shortcut</span>
                     <span class="tag tag-linux">Speed Run</span>
                 </div>
                 <p style="color: var(--text-muted); font-size: 13px;">Executes HDFS directory setup, uploads text, runs YARN MapReduce, and prints the top 25 word frequencies.</p>
@@ -357,10 +354,10 @@
                 </div>
             </div>
 
-            <h3 style="font-size: 16px; margin-bottom: 12px; color: #F59E0B;">Track B: Step-by-Step 1-by-1 Manual Commands (for Viva & Practical Exams):</h3>
+            <h3 style="font-size: 16px; margin-bottom: 12px; color: #F59E0B;">Track B: Step-by-Step 1-by-1 Manual Commands:</h3>
             <ul class="step-list">
                 <li class="step-item">
-                    <p><span class="step-num">Step 1:</span> Check running daemons in terminal:</p>
+                    <p><span class="step-num">Step 1:</span> Check active Hadoop daemons:</p>
                     <div class="code-box">
                         <span id="s1">jps</span>
                         <button class="copy-btn" onclick="copyText('s1')">Copy</button>
@@ -369,42 +366,42 @@
                 <li class="step-item">
                     <p><span class="step-num">Step 2:</span> Create an HDFS input directory:</p>
                     <div class="code-box">
-                        <span id="s2">hdfs dfs -mkdir -p /my_lab/input</span>
+                        <span id="s2">hdfs dfs -mkdir -p /my_data/input</span>
                         <button class="copy-btn" onclick="copyText('s2')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
                     <p><span class="step-num">Step 3:</span> Upload local text file to HDFS:</p>
                     <div class="code-box">
-                        <span id="s3">hdfs dfs -put -f sample_input.txt /my_lab/input/</span>
+                        <span id="s3">hdfs dfs -put -f sample_input.txt /my_data/input/</span>
                         <button class="copy-btn" onclick="copyText('s3')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
                     <p><span class="step-num">Step 4:</span> Verify file existence in HDFS:</p>
                     <div class="code-box">
-                        <span id="s4">hdfs dfs -ls /my_lab/input</span>
+                        <span id="s4">hdfs dfs -ls /my_data/input</span>
                         <button class="copy-btn" onclick="copyText('s4')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
                     <p><span class="step-num">Step 5:</span> Execute the MapReduce JAR manually:</p>
                     <div class="code-box">
-                        <span id="s5">hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_lab/input /my_lab/output</span>
+                        <span id="s5">hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output</span>
                         <button class="copy-btn" onclick="copyText('s5')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
                     <p><span class="step-num">Step 6:</span> Inspect MapReduce output block in HDFS:</p>
                     <div class="code-box">
-                        <span id="s6">hdfs dfs -cat /my_lab/output/part-r-00000 | head -n 25</span>
+                        <span id="s6">hdfs dfs -cat /my_data/output/part-r-00000 | head -n 25</span>
                         <button class="copy-btn" onclick="copyText('s6')">Copy</button>
                     </div>
                 </li>
                 <li class="step-item">
                     <p><span class="step-num">Step 7:</span> Download output back to local computer:</p>
                     <div class="code-box">
-                        <span id="s7">hdfs dfs -get /my_lab/output/part-r-00000 ./lab_results.txt</span>
+                        <span id="s7">hdfs dfs -get /my_data/output/part-r-00000 ./wordcount_results.txt</span>
                         <button class="copy-btn" onclick="copyText('s7')">Copy</button>
                     </div>
                 </li>
@@ -412,7 +409,7 @@
         </div>
 
         <footer>
-            <p>Apache Hadoop Automated Lab Quickstart & Video Guides • Created for fridayslifes/Hadoop • Open Source (MIT)</p>
+            <p>Apache Hadoop Automated Quickstart & Video Guides • Created for fridayslifes/Hadoop • Open Source (MIT)</p>
         </footer>
     </div>
 

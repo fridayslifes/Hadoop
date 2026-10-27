@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-generate_pdf.py - Generates the complete Apache Hadoop Deployment & Dual MapReduce Guide.
+generate_pdf.py - Generates the complete Apache Hadoop Architecture, Deployment
+& Dual-Track MapReduce Reference Guide.
 Uses ReportLab Platypus engine to create a high-quality PDF guide.
 Features:
-- Windows 1-Click Lab PC & Linux/WSL setup instructions
-- Track A: Fast 1-Line Shortcut Commands
-- Track B: Step-by-Step 1-by-1 Manual Commands for Lab Viva & Practical Exams
+- Universal 1-Click Windows & Linux/WSL setup instructions
+- Track A: Automated 1-Line Shortcut Commands
+- Track B: Step-by-Step 1-by-1 Manual Command Reference
 - Python Streaming MapReduce Reference
 - Diagnostic Cheat Sheet & Troubleshooting
 """
@@ -48,7 +49,7 @@ class NumberedCanvas(canvas.Canvas):
 
         # Header on all pages except page 1
         if self._pageNumber > 1:
-            self.drawString(margin, page_h - 26, "Apache Hadoop Lab Quickstart & MapReduce Manual (Shortcut vs 1-by-1 Commands)")
+            self.drawString(margin, page_h - 26, "Apache Hadoop Architecture, Automated Quickstart & MapReduce Manual")
             self.setStrokeColor(colors.HexColor("#E2E8F0"))
             self.setLineWidth(0.5)
             self.line(margin, page_h - 30, page_w - margin, page_h - 30)
@@ -58,7 +59,7 @@ class NumberedCanvas(canvas.Canvas):
         self.setLineWidth(0.5)
         self.line(margin, 34, page_w - margin, 34)
 
-        self.drawString(margin, 22, "Apache Hadoop Lab Manual & Practical Reference Guide • fridayslifes/Hadoop")
+        self.drawString(margin, 22, "Apache Hadoop Universal Manual & Practical Reference • fridayslifes/Hadoop")
         page_str = f"Page {self._pageNumber} of {page_count}"
         self.drawRightString(page_w - margin, 22, page_str)
 
@@ -211,25 +212,25 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     # =========================================================================
     # HEADER BANNER
     # =========================================================================
-    story.append(Paragraph("Apache Hadoop Lab Setup &amp; MapReduce Practical Manual", title_style))
+    story.append(Paragraph("Apache Hadoop Architecture &amp; MapReduce Manual", title_style))
     story.append(Spacer(1, 3))
-    story.append(Paragraph("1-Click Windows Lab PC Setup • Fast Shortcuts vs. Step-by-Step 1-by-1 Manual Reference", subtitle_style))
+    story.append(Paragraph("Universal 1-Click Installation • Fast Shortcuts vs. Complete 1-by-1 Manual Reference", subtitle_style))
     story.append(Spacer(1, 6))
     story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#0284C7"), spaceBefore=1, spaceAfter=8))
 
     # Metadata Table
     meta_data = [
         [
-            Paragraph("<b>Target Environment:</b> College / University Lab Windows PCs (WSL2) &amp; Linux", body_style),
-            Paragraph("<b>Apache Hadoop Version:</b> 3.3.6 / 3.4.x (Stable)", body_style)
+            Paragraph("<b>Target Environment:</b> Windows 10/11 (WSL2), Ubuntu, Debian, CentOS, Arch, macOS", body_style),
+            Paragraph("<b>Apache Hadoop Version:</b> 3.3.6 / 3.4.x (Stable Distributed)", body_style)
         ],
         [
-            Paragraph("<b>Lab 1-Liner:</b> <code>irm https://raw.githubusercontent.com/.../setup-lab.ps1 | iex</code>", body_style),
-            Paragraph("<b>Desktop Placement:</b> Automatically saves to <code>Desktop\\Hadoop</code>", body_style)
+            Paragraph("<b>Universal 1-Liner:</b> <code>irm https://raw.githubusercontent.com/.../setup.ps1 | iex</code>", body_style),
+            Paragraph("<b>Auto-Placement:</b> Saves cleanly to <code>Desktop\\Hadoop</code> or home directory", body_style)
         ],
         [
-            Paragraph("<b>Dual MapReduce Tracks:</b> 1-Click Fast Shortcut &amp; Raw 1-by-1 Viva Commands", body_style),
-            Paragraph("<b>Cluster Supervisor:</b> <code>ran-hadoop</code> (Auto-shutdown on exit)", body_style)
+            Paragraph("<b>Dual MapReduce Tracks:</b> Automated 1-Click Script &amp; Step-by-Step Raw Commands", body_style),
+            Paragraph("<b>Cluster Supervisor:</b> <code>ran-hadoop</code> (POSIX SIGHUP auto-stop)", body_style)
         ]
     ]
     meta_table = Table(meta_data, colWidths=[270, 270])
@@ -246,29 +247,29 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     story.append(Spacer(1, 8))
 
     # =========================================================================
-    # SECTION 1: 1-CLICK LAB PC SETUP (WINDOWS & LINUX)
+    # SECTION 1: UNIVERSAL 1-CLICK QUICKSTART
     # =========================================================================
-    story.append(Paragraph("1. Computer Lab Fast Setup (1 to 3 Line Commands)", h1_style))
+    story.append(Paragraph("1. Universal Automated Quickstart (1 to 3 Line Commands)", h1_style))
     story.append(Paragraph(
-        "In university computer labs, setting up Java, WSL, SSH keys, and Hadoop configuration manually takes up the entire practical session. Use these 1-to-3 line automated commands to configure the lab PC in seconds:",
+        "Deploy a complete, fully configured Apache Hadoop pseudo-distributed cluster without manual XML edits or environment path headaches:",
         body_style
     ))
 
-    story.append(Paragraph("<b>Option A: Windows Lab PC (PowerShell 1-Liner - Recommended for Labs)</b>", h2_style))
-    story.append(Paragraph("Open PowerShell on the Windows lab computer and run this single command:", body_style))
-    story.append(create_code_block("irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup-lab.ps1 | iex", code_style))
+    story.append(Paragraph("<b>Option A: Windows (PowerShell 1-Liner)</b>", h2_style))
+    story.append(Paragraph("Paste this single command into Windows PowerShell (installs Git if missing, verifies WSL, and sets up Hadoop):", body_style))
+    story.append(create_code_block("irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup.ps1 | iex", code_style))
     story.append(Paragraph(
-        "<i>What this does:</i> Downloads the repo to your <b>Windows Desktop (<code>%USERPROFILE%\\Desktop\\Hadoop</code>)</b>, detects/launches WSL, configures OpenJDK 11 and Hadoop, and creates Desktop shortcuts for 'Start Hadoop' and 'Run WordCount'.",
+        "<i>What this does:</i> Checks and installs Git if absent, saves to <code>%USERPROFILE%\\Desktop\\Hadoop</code>, launches WSL2 Ubuntu, deploys OpenJDK 11, configures passwordless SSH, formats the NameNode, and creates Desktop shortcuts.",
         bullet_style
     ))
 
     story.append(Spacer(1, 4))
     story.append(Paragraph("<b>Option B: Linux / WSL Terminal 1-Liner</b>", h2_style))
-    story.append(Paragraph("If you are already inside a WSL or Linux terminal, run this one-liner:", body_style))
+    story.append(Paragraph("In any Linux terminal or existing WSL shell, run:", body_style))
     story.append(create_code_block("curl -sSL https://raw.githubusercontent.com/fridayslifes/Hadoop/main/install.sh | bash", code_style))
 
     story.append(Spacer(1, 4))
-    story.append(Paragraph("<b>Option C: Git Clone 2-Liner (if Git is available)</b>", h2_style))
+    story.append(Paragraph("<b>Option C: Git Clone 2-Liner</b>", h2_style))
     story.append(create_code_block(
         "git clone https://github.com/fridayslifes/Hadoop.git ~/Desktop/Hadoop\n"
         "cd ~/Desktop/Hadoop && ./install.sh",
@@ -280,9 +281,9 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     # =========================================================================
     # SECTION 2: CLUSTER LIFECYCLE & 'ran-hadoop'
     # =========================================================================
-    story.append(Paragraph("2. Starting &amp; Stopping the Cluster ('ran-hadoop')", h1_style))
+    story.append(Paragraph("2. Starting &amp; Managing the Cluster ('ran-hadoop')", h1_style))
     story.append(Paragraph(
-        "Standard Hadoop commands (<code>start-dfs.sh</code>) run background daemons that leave ports locked and consume gigabytes of RAM when you close your terminal. The <b><code>ran-hadoop</code></b> CLI solves this with automatic POSIX signal interception.",
+        "Standard Hadoop scripts spawn background daemons that leave ports locked and consume gigabytes of RAM when you close your terminal. The <b><code>ran-hadoop</code></b> CLI solves this with automatic POSIX signal interception.",
         body_style
     ))
 
@@ -291,7 +292,7 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     story.append(Paragraph("<b>Cluster Lifecycle Controls:</b>", h2_style))
     story.append(Paragraph("• <b>Foreground Dashboard:</b> Keeps the cluster active and shows real-time daemon status.", bullet_style))
     story.append(Paragraph("• <b>Clean Stop:</b> Press <b>Ctrl + C</b> in the terminal to cleanly terminate all HDFS and YARN daemons.", bullet_style))
-    story.append(Paragraph("• <b>Close Window Auto-Stop:</b> Closing the terminal tab sends a <code>SIGHUP</code> trap that safely cleans up all JVMs, leaving <b>zero orphaned processes</b>.", bullet_style))
+    story.append(Paragraph("• <b>Close Window Auto-Stop:</b> Closing the terminal window sends a <code>SIGHUP</code> trap that safely cleans up all JVMs, leaving <b>zero orphaned processes</b>.", bullet_style))
 
     # Verification Table
     jps_data = [
@@ -320,7 +321,7 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     # =========================================================================
     # SECTION 3: TRACK A - FAST 1-LINE SHORTCUT MAPREDUCE
     # =========================================================================
-    story.append(Paragraph("3. Track A: Fast 1-Line Shortcut Commands (Speed Run)", h1_style))
+    story.append(Paragraph("3. Track A: Automated 1-Line Shortcut Commands (Speed Run)", h1_style))
     story.append(Paragraph(
         "When you need to test WordCount or MapReduce immediately without typing repetitive HDFS commands, use the automated shortcut tool:",
         body_style
@@ -332,7 +333,7 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
 
     story.append(Spacer(1, 4))
     story.append(Paragraph("<b>Shortcut 2: Run WordCount on Any Custom File</b>", h2_style))
-    story.append(Paragraph("You can pass any text file on your computer to process it immediately:", body_style))
+    story.append(Paragraph("Pass any text file on your computer to process it immediately:", body_style))
     story.append(create_code_block("./run-wordcount.sh /path/to/my_big_data.txt", code_style))
 
     story.append(Spacer(1, 4))
@@ -343,74 +344,67 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     story.append(Spacer(1, 10))
 
     # =========================================================================
-    # SECTION 4: TRACK B - 1-BY-1 MANUAL COMMANDS (VIVA & PRACTICAL EXAM)
+    # SECTION 4: TRACK B - 1-BY-1 MANUAL COMMANDS
     # =========================================================================
-    story.append(Paragraph("4. Track B: Step-by-Step 1-by-1 Manual Commands (Lab Exam / Viva)", h1_style))
+    story.append(Paragraph("4. Track B: Step-by-Step 1-by-1 Manual Commands", h1_style))
     story.append(Paragraph(
-        "<b>CRITICAL FOR PRACTICAL EXAMS:</b> During lab evaluations, viva voce, and university practical examinations, professors and examiners require students to enter each command manually one by one without shortcuts. Follow this exact sequence:",
+        "For manual execution and complete visibility into HDFS state transitions, execute this step-by-step sequence in a second terminal while <code>ran-hadoop</code> is active:",
         body_style
-    ))
-
-    story.append(create_callout(
-        "📋 Lab Practical Rules &amp; Prerequisites",
-        "Make sure Hadoop is running first (either via <code>ran-hadoop</code> in Terminal 1 or by manually running <code>start-dfs.sh &amp;&amp; start-yarn.sh</code>). Open a new terminal tab to execute the steps below.",
-        callout_title, callout_body,
-        bg_color="#FEF3C7", border_color="#F59E0B"
     ))
 
     story.append(Spacer(1, 4))
     story.append(Paragraph("<b>Step 1: Verify Running Cluster Daemons</b>", h2_style))
-    story.append(Paragraph("Confirm NameNode, DataNode, ResourceManager, and NodeManager are alive:", body_style))
+    story.append(Paragraph("Confirm NameNode, DataNode, ResourceManager, and NodeManager are active:", body_style))
     story.append(create_code_block("jps", code_style))
 
     story.append(Paragraph("<b>Step 2: Create Input Directory in HDFS</b>", h2_style))
-    story.append(Paragraph("Hadoop MapReduce jobs require input directories inside the distributed filesystem (HDFS):", body_style))
-    story.append(create_code_block("hdfs dfs -mkdir -p /my_lab/input", code_style))
+    story.append(Paragraph("Hadoop MapReduce requires input directories inside the distributed filesystem (HDFS):", body_style))
+    story.append(create_code_block("hdfs dfs -mkdir -p /my_data/input", code_style))
 
     story.append(Paragraph("<b>Step 3: Upload Local File to HDFS</b>", h2_style))
     story.append(Paragraph("Transfer your local dataset (e.g. <code>sample_input.txt</code>) into HDFS:", body_style))
-    story.append(create_code_block("hdfs dfs -put -f sample_input.txt /my_lab/input/", code_style))
+    story.append(create_code_block("hdfs dfs -put -f sample_input.txt /my_data/input/", code_style))
 
     story.append(Paragraph("<b>Step 4: Verify Input File in HDFS</b>", h2_style))
     story.append(Paragraph("List the directory contents and view the file inside HDFS:", body_style))
     story.append(create_code_block(
-        "hdfs dfs -ls /my_lab/input\n"
-        "hdfs dfs -cat /my_lab/input/sample_input.txt | head -n 10",
+        "hdfs dfs -ls /my_data/input\n"
+        "hdfs dfs -cat /my_data/input/sample_input.txt | head -n 10",
         code_style
     ))
 
     story.append(Paragraph("<b>Step 5: Clean Previous Output Directory (if re-running)</b>", h2_style))
     story.append(Paragraph("Hadoop will refuse to run if the destination output directory already exists:", body_style))
-    story.append(create_code_block("hdfs dfs -rm -r -f /my_lab/output", code_style))
+    story.append(create_code_block("hdfs dfs -rm -r -f /my_data/output", code_style))
 
     story.append(Paragraph("<b>Step 6: Execute the MapReduce Jar Step-by-Step</b>", h2_style))
     story.append(Paragraph("Run the official Hadoop MapReduce examples JAR via YARN:", body_style))
     story.append(create_code_block(
         "hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar \\\n"
-        "       wordcount /my_lab/input /my_lab/output",
+        "       wordcount /my_data/input /my_data/output",
         code_style
     ))
 
     story.append(Paragraph("<b>Step 7: Inspect MapReduce Output Files in HDFS</b>", h2_style))
     story.append(Paragraph("MapReduce creates a success flag and partition files (<code>part-r-00000</code>):", body_style))
     story.append(create_code_block(
-        "hdfs dfs -ls /my_lab/output\n"
-        "hdfs dfs -cat /my_lab/output/part-r-00000 | head -n 25",
+        "hdfs dfs -ls /my_data/output\n"
+        "hdfs dfs -cat /my_data/output/part-r-00000 | head -n 25",
         code_style
     ))
 
     story.append(Paragraph("<b>Step 8: Export Output from HDFS back to Local Machine</b>", h2_style))
-    story.append(Paragraph("Download the final computed results to your local Linux / Windows folder:", body_style))
-    story.append(create_code_block("hdfs dfs -get /my_lab/output/part-r-00000 ./lab_results.txt", code_style))
+    story.append(Paragraph("Download the final computed results to your local folder:", body_style))
+    story.append(create_code_block("hdfs dfs -get /my_data/output/part-r-00000 ./wordcount_results.txt", code_style))
 
     story.append(PageBreak())
 
     # =========================================================================
-    # SECTION 5: PYTHON STREAMING MAPREDUCE (CUSTOM LAB CODES)
+    # SECTION 5: PYTHON STREAMING MAPREDUCE
     # =========================================================================
-    story.append(Paragraph("5. Bonus: Python Hadoop Streaming MapReduce", h1_style))
+    story.append(Paragraph("5. Python Hadoop Streaming MapReduce", h1_style))
     story.append(Paragraph(
-        "Many advanced college practicals ask for custom Python Mapper and Reducer scripts instead of Java JARs. Hadoop Streaming allows any standard Unix executable/script to act as a MapReduce worker.",
+        "Hadoop Streaming allows any standard Unix executable or Python script to act as a MapReduce worker via standard input and standard output.",
         body_style
     ))
 
@@ -452,8 +446,8 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     story.append(create_code_block(
         "chmod +x mapper.py reducer.py\n"
         "hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \\\n"
-        "       -input /my_lab/input \\\n"
-        "       -output /my_lab/python_output \\\n"
+        "       -input /my_data/input \\\n"
+        "       -output /my_data/python_output \\\n"
         "       -mapper ./mapper.py \\\n"
         "       -reducer ./reducer.py",
         code_style
@@ -464,11 +458,11 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
     # =========================================================================
     # SECTION 6: QUICK COMMAND CHEAT SHEET
     # =========================================================================
-    story.append(Paragraph("6. Quick Lab Practical Command Cheat Sheet", h1_style))
+    story.append(Paragraph("6. Quick Command Cheat Sheet", h1_style))
 
     cheat_data = [
-        [Paragraph("<b>Lab Task / Action</b>", body_style), Paragraph("<b>Terminal Command</b>", body_style)],
-        [Paragraph("Windows Lab PC 1-Click Setup", body_style), Paragraph("<code>irm https://raw.githubusercontent.com/.../setup-lab.ps1 | iex</code>", body_style)],
+        [Paragraph("<b>Task / Action</b>", body_style), Paragraph("<b>Terminal Command</b>", body_style)],
+        [Paragraph("Windows 1-Click Setup (Installs Git/WSL/Hadoop)", body_style), Paragraph("<code>irm https://raw.githubusercontent.com/.../setup.ps1 | iex</code>", body_style)],
         [Paragraph("Linux / WSL 1-Click Setup", body_style), Paragraph("<code>curl -sSL https://raw.githubusercontent.com/.../install.sh | bash</code>", body_style)],
         [Paragraph("Start Hadoop Cluster (with auto-shutdown)", body_style), Paragraph("<code>ran-hadoop</code>", body_style)],
         [Paragraph("Graceful Stop", body_style), Paragraph("Press <b>Ctrl + C</b> in <code>ran-hadoop</code> terminal", body_style)],

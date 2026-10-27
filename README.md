@@ -1,40 +1,41 @@
-# 🐘 Apache Hadoop Automated Lab PC Quickstart & Lifecycle CLI
+# 🐘 Apache Hadoop Universal Automated Quickstart & Lifecycle CLI
 
 [![Apache Hadoop](https://img.shields.io/badge/Apache%20Hadoop-3.3.6%20%7C%203.4.x-FF6600?logo=apache&logoColor=white)](https://hadoop.apache.org/)
 [![Java](https://img.shields.io/badge/Java-OpenJDK%2011%20%7C%208-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
-[![OS Support](https://img.shields.io/badge/OS-Windows%20Lab%20PC%20%7C%20WSL2%20%7C%20Ubuntu%20%7C%20Debian%20%7C%20CentOS%20%7C%20Arch-2496ED?logo=linux&logoColor=white)](https://ubuntu.com/wsl)
+[![OS Support](https://img.shields.io/badge/OS-Windows%2010%2F11%20(WSL2)%20%7C%20Ubuntu%20%7C%20Debian%20%7C%20CentOS%20%7C%20Arch-2496ED?logo=linux&logoColor=white)](https://ubuntu.com/wsl)
 [![Downloader](https://img.shields.io/badge/Speed-16--Thread%20Parallel%20aria2-4CAF50)](#-16-thread-accelerated-download)
 [![Videos](https://img.shields.io/badge/Video%20Demos-Full%20HD%201080p-E11D48?logo=youtube&logoColor=white)](docs/videos/index.html)
-[![PDF Manual](https://img.shields.io/badge/PDF%20Guide-Lab%20Practical%20Manual-7C3AED?logo=adobeacrobatreader&logoColor=white)](docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf)
+[![PDF Manual](https://img.shields.io/badge/PDF%20Guide-Architecture%20%26%20Reference-7C3AED?logo=adobeacrobatreader&logoColor=white)](docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 An enterprise-grade, one-click installer, configuration generator, and managed terminal lifecycle command (`ran-hadoop`) for **Apache Hadoop** in **Windows Subsystem for Linux (WSL2)** and **any Linux distribution**.
 
-Engineered specifically for **college & university computer lab environments**, allowing students to set up a complete Hadoop cluster in **one single command** and master MapReduce both with **automated shortcuts** and **raw 1-by-1 manual commands** for viva and practical exams.
+This repository automates the entire Hadoop deployment pipeline from scratch: installs Git (if missing), enables WSL2 and Ubuntu, configures OpenJDK 11 and passwordless SSH localhost, tunes HDFS & YARN XML files, formats the NameNode, and provides both **1-line shortcuts** and **full 1-by-1 manual command references** for MapReduce processing.
 
 ---
 
-## ⚡ Quickstart for Lab PCs (Share with Friends!)
+## ⚡ The 1-Line Universal Setup (Run Anywhere)
 
-### Option A: Windows Lab PC (PowerShell 1-Liner) — *Recommended for Labs*
-Copy and paste this single command into **Windows PowerShell**:
+### On Windows (PowerShell 1-Liner):
+To install everything on a Windows computer — even if Git and WSL are not yet installed — open **Windows PowerShell** and paste this single command:
 
 ```powershell
-irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup-lab.ps1 | iex
+irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup.ps1 | iex
 ```
 
-> **What this does automatically:**
-> 1. Saves all repository files directly onto your **Windows Desktop** (`%USERPROFILE%\Desktop\Hadoop`).
-> 2. Automatically verifies/enables **WSL2** and Ubuntu.
-> 3. Installs OpenJDK 11, configures SSH keys, tunes Hadoop XML files, and formats the NameNode.
-> 4. Creates convenient **Desktop Shortcuts**:
+> **What this single command does automatically:**
+> 1. **Git Installation**: Detects if `git` is missing and automatically installs it via `winget` (or seamlessly downloads the latest repository archive via HTTPS).
+> 2. **Desktop Auto-Placement**: Downloads and saves all files directly to your **Windows Desktop** (`%USERPROFILE%\Desktop\Hadoop`).
+> 3. **WSL2 & Ubuntu Setup**: Automatically checks and configures Windows Subsystem for Linux (WSL2) with Ubuntu.
+> 4. **Hadoop Deployment**: Installs OpenJDK 11, sets up passwordless SSH, downloads Hadoop using a 16-thread accelerator, tunes XML configurations, and formats the NameNode.
+> 5. **Desktop Shortcuts**: Creates two convenient desktop shortcuts:
 >    - `Start Hadoop (ran-hadoop).lnk` (double-click to start Hadoop anytime)
->    - `Run Hadoop WordCount.lnk` (double-click to test MapReduce instantly)
+>    - `Run Hadoop WordCount.lnk` (double-click to run MapReduce with 1 click)
 
 ---
 
-### Option B: Linux / WSL Terminal (Bash 1-Liner)
-If you already have a terminal open in WSL or native Linux, run:
+### On Linux or Existing WSL Terminal (Bash 1-Liner):
+If you are already inside a Linux or WSL terminal, run:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/fridayslifes/Hadoop/main/install.sh | bash
@@ -42,7 +43,7 @@ curl -sSL https://raw.githubusercontent.com/fridayslifes/Hadoop/main/install.sh 
 
 ---
 
-### Option C: Traditional Git Clone (2-Liner)
+### Traditional Git Clone (2-Liner):
 ```bash
 git clone https://github.com/fridayslifes/Hadoop.git ~/Desktop/Hadoop
 cd ~/Desktop/Hadoop && ./install.sh
@@ -52,33 +53,33 @@ cd ~/Desktop/Hadoop && ./install.sh
 
 ## 🎥 Video Demonstrations & Interactive Player
 
-We provide two pre-compiled Full HD (1080p) explainer videos along with an interactive media player:
+We provide two pre-compiled Full HD (1080p) explainer videos along with an interactive web player:
 
 | Video | Topic | Direct Video File | Interactive Player |
 | :--- | :--- | :--- | :--- |
-| **Video 1** | **1-Click Lab PC & WSL Setup Walkthrough** | [Download MP4](docs/videos/lab_setup_walkthrough.mp4) | [Open Web Player](docs/videos/index.html) |
+| **Video 1** | **Universal 1-Click Setup Walkthrough** | [Download MP4](docs/videos/lab_setup_walkthrough.mp4) | [Open Web Player](docs/videos/index.html) |
 | **Video 2** | **MapReduce: Fast Shortcut vs 1-by-1 Manual Commands** | [Download MP4](docs/videos/mapreduce_shortcut_vs_manual.mp4) | [Open Web Player](docs/videos/index.html) |
 
-👉 **[Click Here to Open the Interactive HTML5 Video Player](docs/videos/index.html)** (includes 1-click copy buttons for all commands).
+👉 **[Click Here to Open the Interactive HTML5 Video Player](docs/videos/index.html)** (includes click-to-copy buttons for all commands).
 
 ---
 
-## 📄 Complete PDF Lab Practical Manual
+## 📄 Complete Practical Guide & Reference Manual
 
-A publication-grade reference PDF is included directly inside the repository:
+A comprehensive publication-grade PDF manual is included directly inside the repository:
 
 📥 **[Download Hadoop Complete Practical Guide (PDF)](docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf)**
 
-**What's inside the PDF:**
-- 1-Click Windows Lab PC & Linux/WSL Setup Guide.
-- **Track A (Speed Run)**: 1-line automated MapReduce shortcuts.
-- **Track B (Viva & Practical Exams)**: Line-by-line manual commands without shortcuts.
+**Key Chapters:**
+- Universal Automated 1-Click Installation Architecture.
+- **Track A (Speed Run)**: 1-line automated MapReduce execution.
+- **Track B (Manual Reference)**: Complete step-by-step raw command sequence.
 - Python Hadoop Streaming MapReduce (`mapper.py` & `reducer.py`).
 - Troubleshooting table for NameNode Safe Mode, port conflicts, and memory limits.
 
 ---
 
-## 🚀 How to Run the Cluster (`ran-hadoop`)
+## 🚀 Starting the Cluster (`ran-hadoop`)
 
 Once installed, reload your shell and launch the supervisor:
 
@@ -121,7 +122,7 @@ Open a **second terminal tab** while `ran-hadoop` is running in Terminal 1.
 
 ### Track A: The Fast 1-Line Shortcut (Speed Run)
 
-To process the default Big Data dataset:
+To process the default sample dataset:
 ```bash
 ./run-wordcount.sh
 ```
@@ -135,9 +136,9 @@ To process any custom text file on your computer:
 
 ---
 
-### Track B: Step-by-Step 1-by-1 Manual Commands (for Lab Exams & Viva)
+### Track B: Complete Step-by-Step 1-by-1 Manual Command Reference
 
-During lab examinations and viva voce evaluations, professors often ask students to enter each command manually. Follow this exact sequence:
+For complete step-by-step execution without shortcuts, run this sequence line by line:
 
 #### Step 1: Check running cluster daemons
 ```bash
@@ -147,47 +148,47 @@ jps
 
 #### Step 2: Create input directory in HDFS
 ```bash
-hdfs dfs -mkdir -p /my_lab/input
+hdfs dfs -mkdir -p /my_data/input
 ```
 
 #### Step 3: Upload local text file to HDFS
 ```bash
-hdfs dfs -put -f sample_input.txt /my_lab/input/
+hdfs dfs -put -f sample_input.txt /my_data/input/
 ```
 
 #### Step 4: Verify file exists in HDFS
 ```bash
-hdfs dfs -ls /my_lab/input
-hdfs dfs -cat /my_lab/input/sample_input.txt | head -n 10
+hdfs dfs -ls /my_data/input
+hdfs dfs -cat /my_data/input/sample_input.txt | head -n 10
 ```
 
 #### Step 5: Clean previous output directory (if re-running)
 ```bash
-hdfs dfs -rm -r -f /my_lab/output
+hdfs dfs -rm -r -f /my_data/output
 ```
 
 #### Step 6: Execute the MapReduce JAR
 ```bash
-hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_lab/input /my_lab/output
+hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output
 ```
 
 #### Step 7: Inspect output word frequencies in HDFS
 ```bash
-hdfs dfs -ls /my_lab/output
-hdfs dfs -cat /my_lab/output/part-r-00000 | head -n 25
+hdfs dfs -ls /my_data/output
+hdfs dfs -cat /my_data/output/part-r-00000 | head -n 25
 ```
 
 #### Step 8: Download results back to your local computer
 ```bash
-hdfs dfs -get /my_lab/output/part-r-00000 ./lab_results.txt
-cat ./lab_results.txt | sort -k2 -nr | head -n 25
+hdfs dfs -get /my_data/output/part-r-00000 ./wordcount_results.txt
+cat ./wordcount_results.txt | sort -k2 -nr | head -n 25
 ```
 
 ---
 
 ## 🐍 Bonus: Python Hadoop Streaming MapReduce
 
-If your curriculum uses Python instead of Java:
+For running custom MapReduce jobs in pure Python:
 
 ### 1. `mapper.py`
 ```python
@@ -229,8 +230,8 @@ if current_word:
 ```bash
 chmod +x mapper.py reducer.py
 hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \
-       -input /my_lab/input \
-       -output /my_lab/python_output \
+       -input /my_data/input \
+       -output /my_data/python_output \
        -mapper ./mapper.py \
        -reducer ./reducer.py
 ```
@@ -241,7 +242,8 @@ hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \
 
 ```text
 Hadoop/
-├── setup-lab.ps1             # 1-Click Windows PowerShell lab installer (saves to Desktop)
+├── setup.ps1                 # Universal 1-Click Windows PowerShell installer (installs Git/WSL/Hadoop)
+├── setup-lab.ps1             # Forwarder to setup.ps1 for backward compatibility
 ├── setup-wsl.bat             # Windows batch launcher (runs install.sh inside WSL)
 ├── install.sh                # Main automated installer (16-thread download & pipe support)
 ├── ran-hadoop                # Foreground cluster manager with Ctrl+C and SIGHUP auto-stop
@@ -271,7 +273,7 @@ Hadoop/
 
 ## 🛑 How the Auto-Shutdown Lifecycle Works
 
-In standard Hadoop setups, users forget background daemons, leaving ports `9000` and `9870` locked and consuming gigabytes of WSL RAM. `ran-hadoop` solves this using **POSIX Signal Interception**:
+In standard Hadoop setups, background daemons stay alive when terminal windows close, locking ports `9000` and `9870` and consuming gigabytes of RAM. `ran-hadoop` prevents this using **POSIX Signal Interception**:
 
 ```
 +--------------------------------------------------------------+
@@ -311,7 +313,7 @@ In standard Hadoop setups, users forget background daemons, leaving ports `9000`
 
 ---
 
-## 🛠️ Diagnostics & Emergency Utilities
+## 🛠️ Diagnostics & Utilities
 
 - **Verify Cluster Health**:
   ```bash
@@ -324,32 +326,6 @@ In standard Hadoop setups, users forget background daemons, leaving ports `9000`
   ./scripts/stop-hadoop-clean.sh
   ```
   Stops DFS and YARN and terminates any lingering orphaned JVMs.
-
-- **Rebuild the PDF Guide**:
-  ```bash
-  python scripts/generate_pdf.py
-  ```
-
-- **Re-render the Videos**:
-  ```bash
-  python scripts/generate_videos.py
-  ```
-
----
-
-## ❓ Frequently Asked Questions (FAQ)
-
-### 1. What if `hdfs dfs` reports `Name node is in safe mode`?
-When Hadoop starts, HDFS enters a momentary Safe Mode while checking block replication. You can exit safe mode immediately with:
-```bash
-hdfs dfsadmin -safemode leave
-```
-
-### 2. Can I access the Web UIs from Windows when running Hadoop inside WSL2?
-Yes! WSL2 automatically proxies localhost ports to Windows. Simply navigate to `http://localhost:9870` or `http://localhost:8088` in Chrome/Edge. If your Windows port forwarding is blocked by a firewall, find the WSL IP using `wsl hostname -I` and open `http://<WSL-IP>:9870`.
-
-### 3. Why OpenJDK 11 instead of Java 17 / 21?
-Hadoop 3.3.x / 3.4.x relies heavily on internal JVM reflection for IPC serialization and object cloning. Java 17+ encapsulates internal packages (`--add-opens java.base/java.lang=ALL-UNNAMED`). OpenJDK 11 provides rock-solid, production-tested stability without needing dozens of extra JVM flags.
 
 ---
 

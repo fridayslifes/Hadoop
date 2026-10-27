@@ -116,27 +116,27 @@ install_packages() {
         apt)
             echo "  Updating package cache and installing packages via apt..."
             $SUDO_CMD apt-get update -y
-            # Prefer openjdk-11-jdk, fallback to openjdk-8-jdk
-            $SUDO_CMD apt-get install -y aria2 openssh-server openssh-client rsync tar curl procps \
+            # Install git, aria2, openssh, rsync, and Java JDK
+            $SUDO_CMD apt-get install -y git aria2 openssh-server openssh-client rsync tar curl procps \
                 openjdk-11-jdk 2>/dev/null || \
-                $SUDO_CMD apt-get install -y aria2 openssh-server openssh-client rsync tar curl procps openjdk-8-jdk || \
-                $SUDO_CMD apt-get install -y aria2 openssh-server openssh-client rsync tar curl procps default-jdk
+                $SUDO_CMD apt-get install -y git aria2 openssh-server openssh-client rsync tar curl procps openjdk-8-jdk || \
+                $SUDO_CMD apt-get install -y git aria2 openssh-server openssh-client rsync tar curl procps default-jdk
             ;;
         dnf|yum)
             echo "  Installing packages via $PKG_MANAGER..."
             $SUDO_CMD "$PKG_MANAGER" install -y epel-release 2>/dev/null || true
-            $SUDO_CMD "$PKG_MANAGER" install -y aria2 openssh-server openssh-clients rsync tar curl procps-ng java-11-openjdk-devel || \
-                $SUDO_CMD "$PKG_MANAGER" install -y aria2 openssh-server openssh-clients rsync tar curl procps-ng java-1.8.0-openjdk-devel
+            $SUDO_CMD "$PKG_MANAGER" install -y git aria2 openssh-server openssh-clients rsync tar curl procps-ng java-11-openjdk-devel || \
+                $SUDO_CMD "$PKG_MANAGER" install -y git aria2 openssh-server openssh-clients rsync tar curl procps-ng java-1.8.0-openjdk-devel
             ;;
         pacman)
             echo "  Installing packages via pacman..."
-            $SUDO_CMD pacman -Sy --noconfirm aria2 openssh rsync tar curl procps-ng jdk11-openjdk || \
-                $SUDO_CMD pacman -Sy --noconfirm aria2 openssh rsync tar curl procps-ng jdk8-openjdk
+            $SUDO_CMD pacman -Sy --noconfirm git aria2 openssh rsync tar curl procps-ng jdk11-openjdk || \
+                $SUDO_CMD pacman -Sy --noconfirm git aria2 openssh rsync tar curl procps-ng jdk8-openjdk
             ;;
         zypper)
             echo "  Installing packages via zypper..."
-            $SUDO_CMD zypper --non-interactive install aria2 openssh rsync tar curl java-11-openjdk-devel || \
-                $SUDO_CMD zypper --non-interactive install aria2 openssh rsync tar curl java-1_8_0-openjdk-devel
+            $SUDO_CMD zypper --non-interactive install git aria2 openssh rsync tar curl java-11-openjdk-devel || \
+                $SUDO_CMD zypper --non-interactive install git aria2 openssh rsync tar curl java-1_8_0-openjdk-devel
             ;;
         *)
             echo -e "${YELLOW}  Unknown package manager. Checking if required tools are already present...${RESET}"

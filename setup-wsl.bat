@@ -1,5 +1,5 @@
 @echo off
-TITLE Apache Hadoop Lab PC WSL Launcher
+TITLE Apache Hadoop Universal WSL Launcher
 COLOR 0A
 
 echo ==============================================================================
@@ -12,7 +12,7 @@ echo.
 
 wsl --status >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] WSL is not detected or enabled on this PC.
+    echo [ERROR] WSL is not detected or enabled on this system.
     echo Please run PowerShell as Administrator and execute:
     echo     wsl --install -d Ubuntu
     echo Then restart your PC and run this file again.
