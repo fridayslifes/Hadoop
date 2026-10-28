@@ -84,6 +84,14 @@ try {
 if (-not $WslInstalled) {
     Write-Host "[!] WSL is not currently installed or active." -ForegroundColor Yellow
     Write-Host "[*] Installing WSL and Ubuntu Linux..." -ForegroundColor Cyan
+
+    $LocalMsi = Join-Path $TargetDir "wsl_update_x64.msi"
+    if (Test-Path $LocalMsi) {
+        Write-Host "[✓] Found local offline WSL2 update installer: wsl_update_x64.msi" -ForegroundColor Green
+        try {
+            Start-Process msiexec.exe -ArgumentList "/i "$LocalMsi" /quiet /norestart" -Wait
+        } catch {}
+    }
     
     $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $IsAdmin) {

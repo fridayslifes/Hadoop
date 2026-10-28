@@ -157,7 +157,21 @@ fi
 # ==============================================================================
 echo -e "\n${CYAN}[Step 2/7] Installing Java Development Kit (OpenJDK 11 LTS)...${RESET}"
 
-if [ -n "$PKG_MANAGER" ]; then
+# Check for local offline Java archive in repository folder
+LOCAL_JAVA_TAR=""
+for cand in "$SCRIPT_DIR"/OpenJDK11U-jdk_x64_linux_hotspot_*.tar.gz "$SCRIPT_DIR"/openjdk-11*.tar.gz /mnt/c/Users/*/Desktop/Hadoop/OpenJDK11U-jdk_x64_linux_hotspot_*.tar.gz; do
+    if [ -f "$cand" ] && tar -tzf "$cand" | head -n 10 >/dev/null 2>&1; then
+        LOCAL_JAVA_TAR="$cand"
+        break
+    fi
+done
+
+if [ -n "$LOCAL_JAVA_TAR" ]; then
+    echo -e "${GREEN}  ✓ Found local offline Java JDK archive: $(basename "$LOCAL_JAVA_TAR")${RESET}"
+    $SUDO_CMD mkdir -p /usr/lib/jvm/java-11-openjdk-amd64
+    $SUDO_CMD tar -xzf "$LOCAL_JAVA_TAR" -C /usr/lib/jvm/java-11-openjdk-amd64 --strip-components=1
+    DETECTED_JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+elif [ -n "$PKG_MANAGER" ]; then
     case "$PKG_MANAGER" in
         apt)
             $SUDO_CMD apt-get install -y openjdk-11-jdk 2>/dev/null || \
@@ -222,7 +236,12 @@ echo "    Java version: $("$JAVA_HOME/bin/java" -version 2>&1 | head -n 1)"
 # ==============================================================================
 echo -e "\n${CYAN}[Step 3/7] Installing and Configuring OpenSSH Server & Client...${RESET}"
 
-if [ -n "$PKG_MANAGER" ]; then
+# Check for local offline OpenSSH deb packages
+LOCAL_SSH_DEBS=$(ls "$SCRIPT_DIR"/offline_packages/openssh*.deb 2>/dev/null || true)
+if [ -n "$LOCAL_SSH_DEBS" ]; then
+    echo -e "${GREEN}  ✓ Installing OpenSSH from local offline packages...${RESET}"
+    $SUDO_CMD dpkg -i "$SCRIPT_DIR"/offline_packages/openssh*.deb 2>/dev/null || true
+elif [ -n "$PKG_MANAGER" ]; then
     case "$PKG_MANAGER" in
         apt)
             $SUDO_CMD apt-get install -y openssh-server openssh-client
@@ -346,11 +365,28 @@ PRIMARY_URL="https://dlcdn.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/${T
 ARCHIVE_URL="https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/${TAR_NAME}"
 BACKUP_URL="https://downloads.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/${TAR_NAME}"
 
-if [ -f "$DOWNLOAD_DIR/$TAR_NAME" ] && tar -tzf "$DOWNLOAD_DIR/$TAR_NAME" | head -n 10 >/dev/null 2>&1; then
-    echo -e "${GREEN}  ✓ Found valid existing archive: $DOWNLOAD_DIR/$TAR_NAME. Skipping download.${RESET}"
+# Auto-detect local offline backup archive in repository directory or Desktop
+LOCAL_TAR=""
+for candidate_tar in \
+    "$SCRIPT_DIR/$TAR_NAME" \
+    "$HOME/Hadoop/$TAR_NAME" \
+    "$DOWNLOAD_DIR/$TAR_NAME" \
+    /mnt/c/Users/*/Desktop/Hadoop/"$TAR_NAME"; do
+    if [ -f "$candidate_tar" ] && tar -tzf "$candidate_tar" | head -n 10 >/dev/null 2>&1; then
+        LOCAL_TAR="$candidate_tar"
+        break
+    fi
+done
+
+if [ -n "$LOCAL_TAR" ]; then
+    echo -e "${GREEN}  ✓ Found local offline backup archive: $LOCAL_TAR${RESET}"
+    echo -e "${GREEN}  ✓ Utilizing local offline bundle (No Internet Required)!${RESET}"
+    if [ "$LOCAL_TAR" != "$DOWNLOAD_DIR/$TAR_NAME" ]; then
+        cp -f "$LOCAL_TAR" "$DOWNLOAD_DIR/$TAR_NAME"
+    fi
 else
-    rm -f "$DOWNLOAD_DIR/$TAR_NAME"
     echo "  Downloading Apache Hadoop $HADOOP_VERSION utilizing 16 concurrent connections..."
+    rm -f "$DOWNLOAD_DIR/$TAR_NAME"
     aria2c \
         --split=16 \
         --max-connection-per-server=16 \
@@ -363,6 +399,12 @@ else
         --dir="$DOWNLOAD_DIR" \
         --out="$TAR_NAME" \
         "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL"
+
+    # Save a persistent offline backup inside the local repository directory on this PC
+    if [ -d "$SCRIPT_DIR" ] && [ -w "$SCRIPT_DIR" ]; then
+        echo "  Saving offline backup tarball inside local Hadoop folder on this PC..."
+        cp -f "$DOWNLOAD_DIR/$TAR_NAME" "$SCRIPT_DIR/$TAR_NAME" 2>/dev/null || true
+    fi
 fi
 
 # Verify archive integrity
@@ -370,8 +412,16 @@ if ! tar -tzf "$DOWNLOAD_DIR/$TAR_NAME" | head -n 10 >/dev/null 2>&1; then
     echo -e "${RED}[ERROR] Downloaded archive is corrupt. Re-downloading with 16 connections...${RESET}"
     rm -f "$DOWNLOAD_DIR/$TAR_NAME"
     aria2c -x 16 -s 16 -k 1M --file-allocation=none --dir="$DOWNLOAD_DIR" --out="$TAR_NAME" "$ARCHIVE_URL" "$PRIMARY_URL"
+    cp -f "$DOWNLOAD_DIR/$TAR_NAME" "$SCRIPT_DIR/$TAR_NAME" 2>/dev/null || true
 fi
 echo -e "${GREEN}  ✓ Apache Hadoop archive verified successfully.${RESET}"
+
+# Also ensure mapreduce examples JAR is backed up locally in the repo folder
+JAR_IN_TAR="hadoop-${HADOOP_VERSION}/share/hadoop/mapreduce/hadoop-mapreduce-examples-${HADOOP_VERSION}.jar"
+if [ ! -f "$SCRIPT_DIR/hadoop-mapreduce-examples-${HADOOP_VERSION}.jar" ] && [ -w "$SCRIPT_DIR" ]; then
+    tar -xzf "$DOWNLOAD_DIR/$TAR_NAME" "$JAR_IN_TAR" -O > "$SCRIPT_DIR/hadoop-mapreduce-examples-${HADOOP_VERSION}.jar" 2>/dev/null || true
+    [ -s "$SCRIPT_DIR/hadoop-mapreduce-examples-${HADOOP_VERSION}.jar" ] && echo -e "${GREEN}  ✓ Saved MapReduce examples JAR backup inside $SCRIPT_DIR.${RESET}"
+fi
 
 # ==============================================================================
 # [Step 5/7] Hadoop Extraction & Configuration

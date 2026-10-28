@@ -1,0 +1,97 @@
+================================================================================
+APACHE HADOOP OFFLINE LAB BACKUP & DISCONNECTED INSTALLATION GUIDE
+Repository: https://github.com/fridayslifes/Hadoop.git
+Target Version: Apache Hadoop 3.3.6 + OpenJDK 11 LTS + OpenSSH
+================================================================================
+
+PURPOSE:
+This guide explains how to pre-download ALL required installation binaries
+(WSL update package, Java OpenJDK 11, OpenSSH packages, Hadoop tarball, and
+MapReduce examples JAR) into your local 'Hadoop' folder, creating a 100%
+self-contained offline suite for Lab PCs cut off from the Internet.
+
+--------------------------------------------------------------------------------
+PART 1: DOWNLOADING ALL OFFLINE FILES (WHEN ON AN INTERNET-CONNECTED PC)
+--------------------------------------------------------------------------------
+Whenever you clone this repo on any computer with Internet access, run the
+offline bundle downloader. It utilizes 16 concurrent connections (aria2c)
+to download all heavy archives directly into your local 'Hadoop' folder.
+
+ON WINDOWS:
+1. Double-click:
+   download-offline-bundle.bat
+   (or run in PowerShell: .\download-offline-bundle.ps1)
+
+ON LINUX / WSL / MACOS:
+1. Open terminal inside the Hadoop directory:
+   chmod +x download-offline-bundle.sh
+   ./download-offline-bundle.sh
+
+ALL FILES SAVED DIRECTLY INSIDE YOUR LOCAL 'Hadoop' FOLDER:
+1. hadoop-3.3.6.tar.gz
+   -> Complete Apache Hadoop 3.3.6 runtime binary archive (~695 MB)
+2. hadoop-mapreduce-examples-3.3.6.jar
+   -> MapReduce examples JAR for WordCount demonstration (~320 KB)
+3. OpenJDK11U-jdk_x64_linux_hotspot_11.0.22_7.tar.gz
+   -> Eclipse Temurin OpenJDK 11 LTS 64-bit Linux runtime (~180 MB)
+4. wsl_update_x64.msi
+   -> Microsoft WSL2 Linux kernel offline installer package (~16 MB)
+5. offline_packages/openssh*.deb
+   -> OpenSSH Server & Client offline installation packages
+6. install.sh, ran-hadoop, run-wordcount.sh, setup-wsl.bat, setup.ps1
+   -> Complete offline-aware installation and cluster management scripts
+
+
+--------------------------------------------------------------------------------
+PART 2: TRANSFERRING TO A COMPLETELY DISCONNECTED LAB PC
+--------------------------------------------------------------------------------
+1. Copy the entire 'Hadoop' folder to a USB pen drive.
+2. Plug the USB into the offline Lab PC.
+3. Copy the 'Hadoop' folder directly to the Desktop:
+   - On Windows: C:\Users\<YourUsername>\Desktop\Hadoop
+   - On Linux / WSL: ~/Hadoop (or /home/<user>/Hadoop)
+
+
+--------------------------------------------------------------------------------
+PART 3: 100% OFFLINE INSTALLATION ON THE LAB PC (ZERO INTERNET NEEDED)
+--------------------------------------------------------------------------------
+The installer automatically detects every local offline package:
+• Detects local 'wsl_update_x64.msi' -> installs WSL2 kernel offline.
+• Detects local OpenJDK 11 tarball -> extracts Java into /usr/lib/jvm/ offline.
+• Detects local OpenSSH packages -> installs SSH server & client offline.
+• Detects local 'hadoop-3.3.6.tar.gz' -> extracts Hadoop cluster offline.
+• Configures XML files, formats NameNode, and runs WordCount.
+
+OPTION A: FROM WINDOWS (WSL)
+1. Double-click 'setup-wsl.bat' inside the Hadoop folder.
+2. The script configures WSL, extracts Java and Hadoop, and runs WordCount.
+
+OPTION B: INSIDE LINUX / WSL TERMINAL
+1. Open terminal:
+   cd ~/Hadoop
+2. Run:
+   ./install.sh
+3. The installer reports:
+   "✓ Found local offline Java JDK archive"
+   "✓ Installing OpenSSH from local offline packages"
+   "✓ Found local offline backup archive: hadoop-3.3.6.tar.gz"
+   "✓ Utilizing local offline bundle (No Internet Required)!"
+
+
+--------------------------------------------------------------------------------
+PART 4: RUNNING HADOOP & WORDCOUNT OFFLINE
+--------------------------------------------------------------------------------
+1. Reload environment:
+   source ~/.bashrc
+
+2. Start cluster:
+   ran-hadoop
+
+3. In another terminal, run WordCount:
+   run-wordcount
+   (or: ./run-wordcount.sh)
+
+4. Web Dashboards:
+   • NameNode UI: http://localhost:9870
+   • YARN UI:     http://localhost:8088
+================================================================================
