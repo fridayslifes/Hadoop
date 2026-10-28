@@ -385,20 +385,77 @@ if [ -n "$LOCAL_TAR" ]; then
         cp -f "$LOCAL_TAR" "$DOWNLOAD_DIR/$TAR_NAME"
     fi
 else
-    echo "  Downloading Apache Hadoop $HADOOP_VERSION utilizing 16 concurrent connections..."
-    rm -f "$DOWNLOAD_DIR/$TAR_NAME"
-    aria2c \
-        --split=16 \
-        --max-connection-per-server=16 \
-        --min-split-size=1M \
-        --max-concurrent-downloads=16 \
-        --file-allocation=none \
-        --summary-interval=2 \
-        --max-tries=5 \
-        --retry-wait=2 \
-        --dir="$DOWNLOAD_DIR" \
-        --out="$TAR_NAME" \
-        "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL"
+    echo "  Downloading Apache Hadoop $HADOOP_VERSION with 16 concurrent connections & stall watchdog..."
+    rm -f "$DOWNLOAD_DIR/$TAR_NAME" "$DOWNLOAD_DIR/$TAR_NAME.aria2"
+
+    max_dl_attempts=5
+    dl_attempt=1
+    target_dl="$DOWNLOAD_DIR/$TAR_NAME"
+
+    while [ "$dl_attempt" -le "$max_dl_attempts" ]; do
+        echo -e "  ${CYAN}[Attempt $dl_attempt/$max_dl_attempts] Starting 16-thread download with live stall monitor...${RESET}"
+        
+        aria2c \
+            --split=16 \
+            --max-connection-per-server=16 \
+            --min-split-size=1M \
+            --max-concurrent-downloads=16 \
+            --file-allocation=none \
+            --lowest-speed-limit=10K \
+            --timeout=30 \
+            --connect-timeout=15 \
+            --summary-interval=5 \
+            --max-tries=5 \
+            --retry-wait=2 \
+            --dir="$DOWNLOAD_DIR" \
+            --out="$TAR_NAME" \
+            "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL" &
+
+        dl_pid=$!
+        prev_sz=0
+        stuck_cnt=0
+        max_stuck_cnt=6 # 30 seconds without growth
+
+        while kill -0 "$dl_pid" 2>/dev/null; do
+            sleep 5
+            if [ -f "$target_dl" ]; then
+                cur_sz=$(stat -c%s "$target_dl" 2>/dev/null || stat -f%z "$target_dl" 2>/dev/null || echo 0)
+                if [ "$cur_sz" -gt "$prev_sz" ]; then
+                    delta_sz=$(( cur_sz - prev_sz ))
+                    spd_kb=$(( delta_sz / 5120 ))
+                    stuck_cnt=0
+                    echo -e "    ${CYAN}[Watchdog Active]${RESET} $(( cur_sz / 1048576 )) MB downloaded (~${spd_kb} KB/s) | Stall counter: 0/$max_stuck_cnt (Normal)"
+                    prev_sz=$cur_sz
+                else
+                    stuck_cnt=$(( stuck_cnt + 1 ))
+                    echo -e "    ${YELLOW}[Watchdog Check] Stall counter: $stuck_cnt/$max_stuck_cnt (Waiting for data chunks...)${RESET}"
+                    if [ "$stuck_cnt" -ge "$max_stuck_cnt" ]; then
+                        echo -e "${RED}    [Watchdog Alert] Download stalled for 30s! Restarting fresh connections...${RESET}"
+                        kill -9 "$dl_pid" 2>/dev/null || true
+                        wait "$dl_pid" 2>/dev/null || true
+                        break
+                    fi
+                fi
+            fi
+        done
+
+        wait "$dl_pid" 2>/dev/null || true
+
+        # Completion & Integrity Checker
+        if [ -f "$target_dl" ]; then
+            final_sz=$(stat -c%s "$target_dl" 2>/dev/null || stat -f%z "$target_dl" 2>/dev/null || echo 0)
+            if [ "$final_sz" -ge 500000000 ] && tar -tzf "$target_dl" | head -n 10 >/dev/null 2>&1; then
+                echo -e "${GREEN}  ✓ [CHECKER PASSED] Download 100% complete & archive verified ($(( final_sz / 1048576 )) MB).${RESET}"
+                rm -f "$target_dl.aria2"
+                break
+            else
+                echo -e "${RED}  ! [CHECKER FAILED] Archive failed integrity test. Retrying...${RESET}"
+            fi
+        fi
+
+        dl_attempt=$(( dl_attempt + 1 ))
+        sleep 3
+    done
 
     # Save a persistent offline backup inside the local repository directory on this PC
     if [ -d "$SCRIPT_DIR" ] && [ -w "$SCRIPT_DIR" ]; then
