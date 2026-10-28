@@ -174,7 +174,9 @@ start_all_services() {
     echo -e "${CYAN}[4/4] Starting YARN (ResourceManager, NodeManager)...${RESET}"
     "$HADOOP_HOME/sbin/start-yarn.sh"
 
-    sleep 2
+    sleep 3
+    # Turn off SafeMode immediately so file writes and MapReduce jobs can execute
+    "$HADOOP_HOME/bin/hdfs" dfsadmin -safemode leave >/dev/null 2>&1 || true
 
     echo ""
     echo -e "${GREEN}================================================================${RESET}"

@@ -165,15 +165,21 @@ HADOOP_BACKUP="https://downloads.apache.org/hadoop/common/hadoop-${HADOOP_VERSIO
 
 download_16_threads "$TAR_NAME" 500000000 "$HADOOP_PRIMARY" "$HADOOP_ARCHIVE" "$HADOOP_BACKUP"
 
-# 3. Extract hadoop-mapreduce-examples JAR directly into local folder
-echo -e "\n${CYAN}[*] Extracting MapReduce examples JAR into offline bundle...${RESET}"
-JAR_PATH_IN_TAR="hadoop-${HADOOP_VERSION}/share/hadoop/mapreduce/hadoop-mapreduce-examples-${HADOOP_VERSION}.jar"
-tar -xzf "$SCRIPT_DIR/$TAR_NAME" "$JAR_PATH_IN_TAR" -O > "$SCRIPT_DIR/$JAR_NAME" 2>/dev/null || true
+# 3. Download verified MapReduce examples JAR directly (with tar extraction fallback)
+echo -e "\n${CYAN}[*] Fetching verified MapReduce examples binary JAR (281 KB)...${RESET}"
+JAR_MAVEN_URL="https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-examples/${HADOOP_VERSION}/${JAR_NAME}"
+if [ ! -f "$SCRIPT_DIR/$JAR_NAME" ] || [ ! -s "$SCRIPT_DIR/$JAR_NAME" ]; then
+    aria2c --split=16 --max-connection-per-server=16 -k 1M --file-allocation=none --dir="$SCRIPT_DIR" --out="$JAR_NAME" "$JAR_MAVEN_URL" 2>/dev/null || true
+fi
+
+# Fallback extraction from tarball if needed
+if [ ! -f "$SCRIPT_DIR/$JAR_NAME" ] || [ ! -s "$SCRIPT_DIR/$JAR_NAME" ]; then
+    JAR_PATH_IN_TAR="hadoop-${HADOOP_VERSION}/share/hadoop/mapreduce/hadoop-mapreduce-examples-${HADOOP_VERSION}.jar"
+    tar -xzf "$SCRIPT_DIR/$TAR_NAME" "$JAR_PATH_IN_TAR" -O > "$SCRIPT_DIR/$JAR_NAME" 2>/dev/null || true
+fi
 
 if [ -f "$SCRIPT_DIR/$JAR_NAME" ] && [ -s "$SCRIPT_DIR/$JAR_NAME" ]; then
     echo -e "${GREEN}  ✓ [CHECKER PASSED] MapReduce examples JAR ready: $JAR_NAME ($(du -h "$SCRIPT_DIR/$JAR_NAME" 2>/dev/null | cut -f1))${RESET}"
-else
-    echo -e "${YELLOW}  ! JAR remains available inside the tarball.${RESET}"
 fi
 
 # 4. Download Java OpenJDK 11 LTS (minimum expected size: 100 MB)

@@ -53,22 +53,25 @@ case "$SCRIPT_DIR" in
 esac
 
 # Auto-bootstrap repository if executed directly via pipe (e.g. curl ... | bash)
-if [ ! -f "$SCRIPT_DIR/ran-hadoop" ] || [ ! -d "$SCRIPT_DIR/conf" ]; then
-    echo -e "${YELLOW}[*] Installer running via pipe or standalone stream. Bootstrapping repository files...${RESET}"
+if [ ! -f "$SCRIPT_DIR/ran-hadoop" ] || [ ! -d "$SCRIPT_DIR/conf" ] || [ ! -f "$SCRIPT_DIR/WordCount.java" ]; then
+    echo -e "${YELLOW}[*] Bootstrapping latest Hadoop installer files from GitHub...${RESET}"
     BOOTSTRAP_DIR="$HOME/Hadoop"
     echo -e "${CYAN}    Target destination: $BOOTSTRAP_DIR (WSL Native Linux Filesystem)${RESET}"
-    if [ ! -d "$BOOTSTRAP_DIR" ]; then
+    mkdir -p "$BOOTSTRAP_DIR"
+    if [ -d "$BOOTSTRAP_DIR/.git" ] && command -v git >/dev/null 2>&1; then
+        echo "    Pulling latest updates via git..."
+        (cd "$BOOTSTRAP_DIR" && git fetch --all 2>/dev/null && git reset --hard origin/main 2>/dev/null) || true
+    elif [ ! -d "$BOOTSTRAP_DIR/.git" ]; then
         if command -v git >/dev/null 2>&1; then
-            git clone https://github.com/fridayslifes/Hadoop.git "$BOOTSTRAP_DIR"
+            git clone https://github.com/fridayslifes/Hadoop.git "$BOOTSTRAP_DIR" 2>/dev/null || (cd "$BOOTSTRAP_DIR" && git fetch --all 2>/dev/null && git reset --hard origin/main 2>/dev/null) || true
         else
-            mkdir -p "$BOOTSTRAP_DIR"
-            curl -sSL https://github.com/fridayslifes/Hadoop/archive/refs/heads/main.tar.gz | tar -xz -C "$BOOTSTRAP_DIR" --strip-components=1
+            curl -sSL https://github.com/fridayslifes/Hadoop/archive/refs/heads/main.tar.gz | tar -xz -C "$BOOTSTRAP_DIR" --strip-components=1 2>/dev/null || true
         fi
     fi
     cd "$BOOTSTRAP_DIR"
     find "$BOOTSTRAP_DIR" -maxdepth 2 -type f \( -name "*.sh" -o -name "ran-hadoop" -o -name "*.xml" -o -name "*.txt" \) -exec sed -i 's/\r$//' {} + 2>/dev/null || true
-    chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true
-    exec ./install.sh "$@"
+    chmod +x install.sh ran-hadoop run-wordcount.sh download-offline-bundle.sh scripts/*.sh 2>/dev/null || true
+    exec "$BOOTSTRAP_DIR/install.sh" "$@"
 fi
 
 # Normalize CRLF line endings on repository scripts
@@ -618,6 +621,10 @@ if ! grep -q "export HADOOP_HOME=" "$HADOOP_CONF_DIR/hadoop-env.sh"; then
 # Hadoop Environment Exports
 export HADOOP_HOME="$INSTALL_DIR"
 export HADOOP_CONF_DIR="$HADOOP_CONF_DIR"
+export HADOOP_COMMON_HOME="$INSTALL_DIR"
+export HADOOP_HDFS_HOME="$INSTALL_DIR"
+export HADOOP_MAPRED_HOME="$INSTALL_DIR"
+export HADOOP_YARN_HOME="$INSTALL_DIR"
 export HADOOP_OS_TYPE="\${HADOOP_OS_TYPE:-\$(uname -s)}"
 
 # Daemon users configuration for WSL and multi-user compatibility
@@ -717,6 +724,7 @@ export HADOOP_HOME="$INSTALL_DIR"
 export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$JAVA_HOME/bin:$PATH"
 
 "$SCRIPT_DIR/ran-hadoop" start
+sleep 3
 
 echo -e "\n  Running distributed MapReduce WordCount..."
 "$SCRIPT_DIR/run-wordcount.sh" "$SCRIPT_DIR/sample_input.txt"

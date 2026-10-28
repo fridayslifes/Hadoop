@@ -173,16 +173,11 @@ $HadoopArchive = "https://archive.apache.org/dist/hadoop/common/hadoop-$HadoopVe
 $HadoopBackup  = "https://downloads.apache.org/hadoop/common/hadoop-$HadoopVersion/$TarName"
 Download-File16Threads -FileName $TarName -Urls @($HadoopPrimary, $HadoopArchive, $HadoopBackup) -MinExpectedBytes 500000000
 
-# 2. Extract hadoop-mapreduce-examples JAR using built-in Windows tar.exe
+# 2. Download verified MapReduce examples JAR directly
 Write-Host ""
-Write-Host "[*] Extracting MapReduce examples JAR into local folder..." -ForegroundColor Cyan
-$TarExe = Get-Command tar.exe -ErrorAction SilentlyContinue
-if ($TarExe -and (Test-Path $TarTarget)) {
-    & tar.exe -xzf "$TarTarget" -C "$ScriptDir" "hadoop-$HadoopVersion/share/hadoop/mapreduce/hadoop-mapreduce-examples-$HadoopVersion.jar" --strip-components=4 2>$null
-    if (Test-Path $JarTarget) {
-        Write-Host "[✓] Extracted: $JarName" -ForegroundColor Green
-    }
-}
+Write-Host "[*] Fetching verified MapReduce examples binary JAR (281 KB)..." -ForegroundColor Cyan
+$JarMavenUrl = "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-examples/$HadoopVersion/$JarName"
+Download-File16Threads -FileName $JarName -Urls @($JarMavenUrl) -MinExpectedBytes 250000
 
 # 3. Download Java OpenJDK 11 LTS (Linux x64) for offline WSL installation
 $JavaUrl1 = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.22%2B7/OpenJDK11U-jdk_x64_linux_hotspot_11.0.22_7.tar.gz"

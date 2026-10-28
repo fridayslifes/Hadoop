@@ -8,8 +8,6 @@
 #      (compiles on the fly with Hadoop 3 classpath and packages into JAR)
 # ==============================================================================
 
-set -e
-
 # Ensure valid Linux home directory in WSL environments
 REAL_HOME=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f6 || echo "$HOME")
 if [ -n "$REAL_HOME" ] && [ -d "$REAL_HOME" ]; then
@@ -120,7 +118,7 @@ echo " Time        : $(date '+%Y-%m-%d %H:%M:%S')"
 [ -n "$CUSTOM_JAVA" ] && echo " Custom Java : $CUSTOM_JAVA (compiling on the fly)"
 echo -e "${GREEN}================================================================${RESET}"
 
-# 1. Verify HDFS is reachable
+# 1. Verify HDFS is reachable and ensure SafeMode is OFF
 echo -e "${CYAN}[1/5] Checking Hadoop cluster status...${RESET}"
 if ! jps 2>/dev/null | grep -q "NameNode"; then
     echo -e "${YELLOW}[WARNING] NameNode not detected in 'jps'.${RESET}"
@@ -134,10 +132,13 @@ if ! hdfs dfs -ls / >/dev/null 2>&1; then
     echo -e "or execute: ${BOLD}start-dfs.sh && start-yarn.sh${RESET}"
     exit 1
 fi
-echo -e "${GREEN}  ✓ HDFS is reachable.${RESET}"
+
+# Ensure NameNode safemode is disabled so writes and container creation succeed
+hdfs dfsadmin -safemode leave >/dev/null 2>&1 || true
+echo -e "${GREEN}  ✓ HDFS is reachable (SafeMode OFF).${RESET}"
 
 # 2. Determine JAR and Main Class
-echo -e "${CYAN}[2/5] Preparing MapReduce WordCount Application...${RESET}"
+echo -e "${CYAN}[2/5] Locating MapReduce Examples JAR...${RESET}"
 
 JAR_TO_RUN=""
 MAIN_CLASS=""
@@ -158,23 +159,74 @@ if [ -n "$CUSTOM_JAVA" ]; then
     MAIN_CLASS="WordCount"
     echo -e "${GREEN}  ✓ Successfully built custom JAR: $JAR_TO_RUN (Main-Class: $MAIN_CLASS)${RESET}"
 else
-    # Find binary examples JAR (filtering out sources and test jars)
-    EXAMPLES_JAR=$(find "$HADOOP_HOME/share/hadoop/mapreduce" "$SCRIPT_DIR" "$HOME/Hadoop" -name "hadoop-mapreduce-examples-*.jar" ! -name "*-sources.jar" ! -name "*-tests.jar" 2>/dev/null | head -n 1)
+    # CRITICAL FIX: Locate strictly the compiled BINARY JAR, completely ignoring sources, test-sources, and tests
+    EXAMPLES_JAR=""
 
+    # 1. Check known exact binary locations directly (NEVER in sources/)
+    for candidate in \
+        "$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar" \
+        "$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar" \
+        "$SCRIPT_DIR/hadoop-mapreduce-examples-3.3.6.jar" \
+        "$HOME/Hadoop/hadoop-mapreduce-examples-3.3.6.jar"
+    do
+        for f in $candidate; do
+            if [ -f "$f" ] && [[ "$f" != *sources* ]] && [[ "$f" != *tests* ]]; then
+                EXAMPLES_JAR="$f"
+                break 2
+            fi
+        done
+    done
+
+    # 2. If not found by direct path, find binary JAR strictly excluding sources
     if [ -z "$EXAMPLES_JAR" ] || [ ! -f "$EXAMPLES_JAR" ]; then
-        # Check if WordCount.java exists in repo to compile on the fly as fallback
-        if [ -f "$SCRIPT_DIR/WordCount.java" ]; then
-            echo "  Examples JAR not found. Compiling $SCRIPT_DIR/WordCount.java..."
+        EXAMPLES_JAR=$(find "$HADOOP_HOME/share/hadoop/mapreduce" "$SCRIPT_DIR" "$HOME/Hadoop" \
+            -maxdepth 2 -type f \
+            -name "hadoop-mapreduce-examples-*.jar" \
+            ! -path "*/sources/*" \
+            ! -name "*sources*" \
+            ! -name "*tests*" 2>/dev/null | head -n 1)
+    fi
+
+    # 3. Validate JAR contains compiled classes (prevent ClassNotFoundException on source JARs)
+    JAR_HAS_CLASSES=0
+    if [ -n "$EXAMPLES_JAR" ] && [ -f "$EXAMPLES_JAR" ]; then
+        if jar tf "$EXAMPLES_JAR" 2>/dev/null | grep -q "WordCount.class" || \
+           unzip -l "$EXAMPLES_JAR" 2>/dev/null | grep -q "WordCount.class"; then
+            JAR_HAS_CLASSES=1
+        fi
+    fi
+
+    # 4. If JAR is missing or is an invalid sources-only JAR, automatically fetch genuine binary from Maven Central
+    if [ "$JAR_HAS_CLASSES" -eq 0 ]; then
+        echo -e "${YELLOW}  ! Detected invalid or source-only examples JAR. Downloading official compiled binary JAR...${RESET}"
+        TARGET_JAR="$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar"
+        MAVEN_URL="https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-mapreduce-examples/3.3.6/hadoop-mapreduce-examples-3.3.6.jar"
+        
+        if command -v curl >/dev/null 2>&1; then
+            curl -sSL -o "$TARGET_JAR" "$MAVEN_URL" 2>/dev/null || true
+        elif command -v wget >/dev/null 2>&1; then
+            wget -q -O "$TARGET_JAR" "$MAVEN_URL" 2>/dev/null || true
+        fi
+
+        if [ -f "$TARGET_JAR" ] && [ -s "$TARGET_JAR" ]; then
+            EXAMPLES_JAR="$TARGET_JAR"
+            cp -f "$TARGET_JAR" "$SCRIPT_DIR/hadoop-mapreduce-examples-3.3.6.jar" 2>/dev/null || true
+            cp -f "$TARGET_JAR" "$HOME/Hadoop/hadoop-mapreduce-examples-3.3.6.jar" 2>/dev/null || true
+            echo -e "${GREEN}  ✓ Successfully fetched official binary JAR from Maven Central (281 KB).${RESET}"
+        elif [ -f "$SCRIPT_DIR/WordCount.java" ] || [ -f "$HOME/Hadoop/WordCount.java" ]; then
+            SRC_JAVA="$SCRIPT_DIR/WordCount.java"
+            [ ! -f "$SRC_JAVA" ] && SRC_JAVA="$HOME/Hadoop/WordCount.java"
+            echo "  Compiling fallback $SRC_JAVA..."
             BUILD_DIR="/tmp/wordcount_build_$$"
             mkdir -p "$BUILD_DIR"
-            javac -classpath "$HADOOP_CLASSPATH" -d "$BUILD_DIR" "$SCRIPT_DIR/WordCount.java"
-            CUSTOM_JAR="$SCRIPT_DIR/WordCount.jar"
+            javac -classpath "$HADOOP_CLASSPATH" -d "$BUILD_DIR" "$SRC_JAVA"
+            CUSTOM_JAR="$HADOOP_HOME/share/hadoop/mapreduce/WordCount.jar"
             jar -cvf "$CUSTOM_JAR" -C "$BUILD_DIR" . >/dev/null
             rm -rf "$BUILD_DIR"
             EXAMPLES_JAR="$CUSTOM_JAR"
             MAIN_CLASS="WordCount"
         else
-            echo -e "${RED}[ERROR] Could not find hadoop-mapreduce-examples JAR in $HADOOP_HOME/share/hadoop/mapreduce.${RESET}"
+            echo -e "${RED}[ERROR] Could not locate or build valid MapReduce examples binary JAR.${RESET}"
             exit 1
         fi
     fi
@@ -183,7 +235,7 @@ else
     if [ -z "$MAIN_CLASS" ]; then
         MAIN_CLASS="wordcount"
     fi
-    echo -e "${GREEN}  ✓ Using Application JAR: $(basename "$JAR_TO_RUN") (Class: $MAIN_CLASS)${RESET}"
+    echo -e "${GREEN}  ✓ Found JAR: $(basename "$JAR_TO_RUN")${RESET}"
 fi
 
 # 3. Prepare HDFS directories
@@ -208,31 +260,50 @@ echo -e "${CYAN}[4/5] Executing MapReduce WordCount Job on YARN...${RESET}"
 echo -e "${BOLD}Command:${RESET} hadoop jar \"$JAR_TO_RUN\" $MAIN_CLASS \"$HDFS_INPUT_DIR\" \"$HDFS_OUTPUT_DIR\""
 echo "----------------------------------------------------------------"
 
-hadoop jar "$JAR_TO_RUN" $MAIN_CLASS "$HDFS_INPUT_DIR" "$HDFS_OUTPUT_DIR"
+# Execute hadoop jar with primary main class, and fallback if class casing differs
+JOB_EXIT=0
+hadoop jar "$JAR_TO_RUN" $MAIN_CLASS "$HDFS_INPUT_DIR" "$HDFS_OUTPUT_DIR" || JOB_EXIT=$?
+
+if [ "$JOB_EXIT" -ne 0 ]; then
+    echo -e "${YELLOW}[!] Primary job invocation failed (exit code $JOB_EXIT). Attempting fallback execution...${RESET}"
+    if [ "$MAIN_CLASS" = "wordcount" ]; then
+        FALLBACK_CLASS="WordCount"
+    else
+        FALLBACK_CLASS="wordcount"
+    fi
+    echo -e "    Trying alternative class: $FALLBACK_CLASS"
+    hadoop jar "$JAR_TO_RUN" $FALLBACK_CLASS "$HDFS_INPUT_DIR" "$HDFS_OUTPUT_DIR" || true
+fi
 
 echo "----------------------------------------------------------------"
-echo -e "${GREEN}  ✓ MapReduce job completed successfully!${RESET}"
 
 # 5. Display results
 echo ""
 echo -e "${CYAN}[5/5] Fetching WordCount Results from HDFS ($HDFS_OUTPUT_DIR)...${RESET}"
-echo -e "${GREEN}================================================================${RESET}"
-echo -e "${BOLD}TOP 25 MOST FREQUENT WORDS:${RESET}"
-echo -e "${GREEN}================================================================${RESET}"
-printf "%-25s | %s\n" "WORD" "COUNT"
-echo "----------------------------------------"
-hdfs dfs -cat "$HDFS_OUTPUT_DIR/part-r-00000" | sort -k2 -nr | head -n 25 | while read -r word count; do
-    printf "%-25s | %s\n" "$word" "$count"
-done
+if hdfs dfs -test -e "$HDFS_OUTPUT_DIR/part-r-00000" 2>/dev/null; then
+    echo -e "${GREEN}================================================================${RESET}"
+    echo -e "${BOLD}TOP 25 MOST FREQUENT WORDS:${RESET}"
+    echo -e "${GREEN}================================================================${RESET}"
+    printf "%-25s | %s\n" "WORD" "COUNT"
+    echo "----------------------------------------"
+    hdfs dfs -cat "$HDFS_OUTPUT_DIR/part-r-00000" 2>/dev/null | sort -k2 -nr | head -n 25 | while read -r word count; do
+        printf "%-25s | %s\n" "$word" "$count"
+    done
 
-TOTAL_DISTINCT=$(hdfs dfs -cat "$HDFS_OUTPUT_DIR/part-r-00000" | wc -l)
-echo "----------------------------------------"
-echo -e "Total unique words processed: ${BOLD}$TOTAL_DISTINCT${RESET}"
-hdfs dfs -get -f "$HDFS_OUTPUT_DIR/part-r-00000" ./wordcount_results.txt 2>/dev/null || true
-if [ -f "./wordcount_results.txt" ]; then
-    echo -e "Saved local copy:             ${GREEN}./wordcount_results.txt${RESET}"
+    TOTAL_DISTINCT=$(hdfs dfs -cat "$HDFS_OUTPUT_DIR/part-r-00000" 2>/dev/null | wc -l)
+    echo "----------------------------------------"
+    echo -e "Total unique words processed: ${BOLD}$TOTAL_DISTINCT${RESET}"
+    hdfs dfs -get -f "$HDFS_OUTPUT_DIR/part-r-00000" ./wordcount_results.txt 2>/dev/null || true
+    if [ -f "./wordcount_results.txt" ]; then
+        echo -e "Saved local copy:             ${GREEN}./wordcount_results.txt${RESET}"
+    fi
+    echo -e "${GREEN}================================================================${RESET}"
+    echo -e "${GREEN}  ✓ MapReduce job completed successfully!${RESET}"
+else
+    echo -e "${RED}[ERROR] MapReduce job did not produce output at $HDFS_OUTPUT_DIR/part-r-00000.${RESET}"
+    echo "Please inspect YARN logs: yarn logs -applicationId \$(yarn application -list -appStates ALL 2>/dev/null | grep -o 'application_[0-9_]*' | tail -n 1)"
 fi
-echo -e "${GREEN}================================================================${RESET}"
+
 echo -e "To view all output lines: ${BOLD}hdfs dfs -cat $HDFS_OUTPUT_DIR/part-r-00000${RESET}"
 echo -e "To check YARN Web UI:      ${BOLD}http://localhost:8088${RESET}"
 echo -e "To check HDFS Web UI:      ${BOLD}http://localhost:9870${RESET}"

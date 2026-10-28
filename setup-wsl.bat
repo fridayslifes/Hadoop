@@ -47,7 +47,7 @@ if "%BATCH_DIR:~-1%"=="\" set "BATCH_DIR=%BATCH_DIR:~0,-1%"
 
 :: 4. Run the Linux installer natively inside WSL ext4 Linux filesystem (~/Hadoop)
 echo [*] Syncing files to WSL native filesystem and launching installer...
-wsl -e bash -c "mkdir -p ~/Hadoop && (cp -rf \"$(wslpath '%BATCH_DIR%')\"/* ~/Hadoop/ 2>/dev/null || git clone https://github.com/fridayslifes/Hadoop.git ~/Hadoop 2>/dev/null || true); cd ~/Hadoop && sed -i 's/\r$//' install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; ./install.sh"
+wsl -e bash -c "mkdir -p ~/Hadoop && (cd ~/Hadoop && git pull origin main 2>/dev/null || cp -rf \"$(wslpath '%BATCH_DIR%')\"/* ~/Hadoop/ 2>/dev/null || git clone https://github.com/fridayslifes/Hadoop.git ~/Hadoop 2>/dev/null || true); cd ~/Hadoop && sed -i 's/\r$//' install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; ./install.sh"
 
 echo.
 echo ==============================================================================

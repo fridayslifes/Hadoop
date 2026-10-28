@@ -64,7 +64,28 @@ if (-not (Test-Path $TargetDir)) {
         Remove-Item -Recurse -Force $ExtractPath -ErrorAction SilentlyContinue
     }
 } else {
-    Write-Host "[✓] Existing Hadoop folder found at $TargetDir" -ForegroundColor Green
+    Write-Host "[✓] Existing Hadoop folder found at $TargetDir. Syncing latest updates..." -ForegroundColor Green
+    if ($GitCmd -and (Test-Path (Join-Path $TargetDir ".git"))) {
+        try {
+            Push-Location $TargetDir
+            & git fetch --all 2>$null
+            & git reset --hard origin/main 2>$null
+            Pop-Location
+        } catch {}
+    } else {
+        $ZipPath = Join-Path $env:TEMP "hadoop-main.zip"
+        $ExtractPath = Join-Path $env:TEMP "hadoop-extract"
+        if (Test-Path $ExtractPath) { Remove-Item -Recurse -Force $ExtractPath }
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        try {
+            Invoke-WebRequest -Uri "https://github.com/fridayslifes/Hadoop/archive/refs/heads/main.zip" -OutFile $ZipPath -UseBasicParsing
+            Expand-Archive -Path $ZipPath -DestinationPath $ExtractPath -Force
+            $ExtractedFolder = Join-Path $ExtractPath "Hadoop-main"
+            Copy-Item -Path "$ExtractedFolder\*" -Destination $TargetDir -Recurse -Force
+            Remove-Item -Force $ZipPath -ErrorAction SilentlyContinue
+            Remove-Item -Recurse -Force $ExtractPath -ErrorAction SilentlyContinue
+        } catch {}
+    }
 }
 
 # 4. Verify WSL Status & Check Linux Distribution (Ubuntu, Kali Linux, Debian, etc.)
@@ -162,7 +183,7 @@ Write-Host "[*] Setting up Hadoop natively inside WSL Linux filesystem..." -Fore
 Write-Host "------------------------------------------------------------------------------" -ForegroundColor DarkGray
 
 $NormalizedTarget = $TargetDir.Replace('\', '/')
-$WslTargetScript = "mkdir -p ~/Hadoop && (cp -rf `"`$(wslpath -u '$NormalizedTarget')`"/* ~/Hadoop/ 2>/dev/null || git clone https://github.com/fridayslifes/Hadoop.git ~/Hadoop 2>/dev/null || true); cd ~/Hadoop && sed -i 's/\r$//' install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; ./install.sh"
+$WslTargetScript = "mkdir -p ~/Hadoop && (cd ~/Hadoop && git pull origin main 2>/dev/null || cp -rf `"`$(wslpath -u '$NormalizedTarget')`"/* ~/Hadoop/ 2>/dev/null || git clone https://github.com/fridayslifes/Hadoop.git ~/Hadoop 2>/dev/null || true); cd ~/Hadoop && sed -i 's/\r$//' install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; ./install.sh"
 & wsl.exe -e bash -c $WslTargetScript
 
 Write-Host ""
