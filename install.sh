@@ -461,8 +461,15 @@ fi
 # ==============================================================================
 echo -e "\n${CYAN}[Step 5/7] Extracting & Configuring Apache Hadoop Pseudo-Distributed Cluster...${RESET}"
 
+# Wipe any prior conflicting cluster binaries or data
+rm -rf "$INSTALL_DIR"/* "$DATA_DIR/tmp" "$DATA_DIR/hdfs/namenode" "$DATA_DIR/hdfs/datanode" 2>/dev/null || true
 mkdir -p "$INSTALL_DIR"
 tar -xzf "$DOWNLOAD_DIR/$TAR_NAME" -C "$INSTALL_DIR" --strip-components=1
+
+# Ensure official verified binary examples JAR is in place (overwriting any sources jar)
+if [ -f "$SCRIPT_DIR/hadoop-mapreduce-examples-3.3.6.jar" ]; then
+    cp -f "$SCRIPT_DIR/hadoop-mapreduce-examples-3.3.6.jar" "$INSTALL_DIR/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.6.jar" 2>/dev/null || true
+fi
 
 # Create cluster temporary and metadata storage directories
 mkdir -p "$DATA_DIR/tmp"

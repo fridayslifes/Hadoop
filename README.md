@@ -18,7 +18,7 @@ irm https://raw.githubusercontent.com/fridayslifes/Hadoop/main/setup.ps1 | iex
 > **What this command does:**
 > 1. Installs **Git** if not present.
 > 2. Clones the repository directly to your **Desktop** (`%USERPROFILE%\Desktop\Hadoop`).
-> 3. Verifies **WSL2** status and installs Ubuntu if no Linux distribution is found.
+> 3. Checks for and cleanly purges any existing/broken WSL Linux distributions (`wsl --unregister`) to eliminate conflicts, then installs a fresh, pristine Ubuntu instance.
 > 4. Runs the ordered Linux installer natively inside WSL ext4 filesystem (`~/Hadoop`).
 > 5. Creates two **Desktop Shortcuts**:
 >    - `Start Hadoop (ran-hadoop).lnk` (double-click to start Hadoop with auto-shutdown monitor)

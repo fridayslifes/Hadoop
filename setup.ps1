@@ -88,10 +88,39 @@ if (-not (Test-Path $TargetDir)) {
     }
 }
 
-# 4. Verify WSL Status & Check Linux Distribution (Ubuntu, Kali Linux, Debian, etc.)
+# 4. Clean Wipe & Fresh Conflict-Free WSL Setup
 Write-Host ""
-Write-Host "[*] Checking Windows Subsystem for Linux (WSL) status..." -ForegroundColor Cyan
+Write-Host "==============================================================================" -ForegroundColor Cyan
+Write-Host "[*] Checking for existing WSL environments and distributions..." -ForegroundColor Cyan
+Write-Host "==============================================================================" -ForegroundColor Cyan
 
+# Terminate any running WSL instances
+try {
+    & wsl.exe --shutdown 2>$null
+} catch {}
+
+# Detect and purge existing distributions to eliminate conflicts
+$Distros = @()
+try {
+    $RawDistros = & wsl.exe --list --quiet 2>$null
+    $Distros = $RawDistros | ForEach-Object { ($_ -replace "`0", "").Trim() } | Where-Object { $_ -ne "" }
+} catch {
+    $Distros = @()
+}
+
+if ($Distros.Count -gt 0) {
+    Write-Host "[!] Found existing WSL Linux distribution(s): $($Distros -join ', ')" -ForegroundColor Yellow
+    Write-Host "[*] Purging and unregistering existing distributions to prevent version/port conflicts..." -ForegroundColor Cyan
+    foreach ($d in $Distros) {
+        Write-Host "    -> Completely unregistering and wiping: $d" -ForegroundColor Gray
+        & wsl.exe --unregister $d 2>$null
+    }
+    Write-Host "[✓] Previous distributions cleanly wiped." -ForegroundColor Green
+} else {
+    Write-Host "[✓] No previous conflicting distributions found." -ForegroundColor Green
+}
+
+# Verify WSL Status
 $WslInstalled = $false
 try {
     $WslStatus = & wsl.exe --status 2>&1
@@ -104,13 +133,13 @@ try {
 
 if (-not $WslInstalled) {
     Write-Host "[!] WSL is not currently installed or active." -ForegroundColor Yellow
-    Write-Host "[*] Installing WSL and Ubuntu Linux..." -ForegroundColor Cyan
+    Write-Host "[*] Installing WSL kernel..." -ForegroundColor Cyan
 
     $LocalMsi = Join-Path $TargetDir "wsl_update_x64.msi"
     if (Test-Path $LocalMsi) {
         Write-Host "[✓] Found local offline WSL2 update installer: wsl_update_x64.msi" -ForegroundColor Green
         try {
-            Start-Process msiexec.exe -ArgumentList "/i "$LocalMsi" /quiet /norestart" -Wait
+            Start-Process msiexec.exe -ArgumentList "/i `"$LocalMsi`" /quiet /norestart" -Wait
         } catch {}
     }
     
@@ -132,27 +161,14 @@ if (-not $WslInstalled) {
     Write-Host "[✓] WSL is active and operational." -ForegroundColor Green
 }
 
-# Check for installed Linux distribution
-Write-Host "[*] Checking for installed Linux distributions in WSL (Ubuntu, Kali, Debian)..." -ForegroundColor Cyan
-$Distros = @()
-try {
-    $RawDistros = & wsl.exe --list --quiet 2>$null
-    $Distros = $RawDistros | ForEach-Object { ($_ -replace "`0", "").Trim() } | Where-Object { $_ -ne "" }
-} catch {
-    $Distros = @()
+# Install clean, fresh Ubuntu distribution
+Write-Host ""
+Write-Host "[*] Installing fresh, conflict-free Ubuntu Linux distribution in WSL..." -ForegroundColor Cyan
+& wsl.exe --install -d Ubuntu --web-download
+if ($LASTEXITCODE -ne 0) {
+    & wsl.exe --install -d Ubuntu
 }
-
-if ($Distros.Count -eq 0) {
-    Write-Host "[!] No Linux distribution detected in WSL." -ForegroundColor Yellow
-    Write-Host "[*] Installing Ubuntu Linux distribution for WSL..." -ForegroundColor Cyan
-    & wsl.exe --install -d Ubuntu --web-download
-    if ($LASTEXITCODE -ne 0) {
-        & wsl.exe --install -d Ubuntu
-    }
-    Write-Host "[✓] Ubuntu Linux distribution installation completed." -ForegroundColor Green
-} else {
-    Write-Host "[✓] Detected Linux distribution(s): $($Distros -join ', ')" -ForegroundColor Green
-}
+Write-Host "[✓] Fresh Ubuntu Linux distribution installation completed." -ForegroundColor Green
 
 # 5. Create Desktop Shortcuts
 try {

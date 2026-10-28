@@ -9,7 +9,15 @@ echo.
 echo Launching installation inside Windows Subsystem for Linux (WSL)...
 echo.
 
-:: 1. Verify WSL status
+:: 1. Purge and unregister any existing WSL distributions to eliminate conflicts
+echo [*] Checking for existing WSL Linux distributions to prevent conflicts...
+wsl --shutdown >nul 2>&1
+for /f "tokens=*" %%i in ('wsl -l -q 2^>nul') do (
+    echo [-] Purging and unregistering existing distribution: %%i to prevent version conflicts...
+    wsl --unregister %%i >nul 2>&1
+)
+
+:: 2. Verify WSL status and initialize if missing
 wsl --status >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo [!] WSL is not currently active on this system.
@@ -26,19 +34,11 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-:: 2. Check for installed Linux distribution (Ubuntu, Kali, Debian, etc.)
-set HAS_DISTRO=0
-for /f "tokens=*" %%i in ('wsl -l -q 2^>nul') do (
-    set "HAS_DISTRO=1"
-)
-
-if "%HAS_DISTRO%"=="0" (
-    echo [!] No Linux distribution found in WSL.
-    echo [*] Installing Ubuntu Linux distribution for WSL...
-    wsl --install -d Ubuntu --web-download
-    if %ERRORLEVEL% NEQ 0 (
-        wsl --install -d Ubuntu
-    )
+:: 3. Fresh installation of Ubuntu in WSL
+echo [*] Installing fresh, conflict-free Ubuntu distribution in WSL...
+wsl --install -d Ubuntu --web-download
+if %ERRORLEVEL% NEQ 0 (
+    wsl --install -d Ubuntu
 )
 
 :: 3. Prepare directory path without trailing backslash
