@@ -67,20 +67,23 @@ if (-not (Test-Path $TargetDir)) {
     Write-Host "[✓] Existing Hadoop folder found at $TargetDir" -ForegroundColor Green
 }
 
-# 4. Verify WSL2 Status & Install Ubuntu if needed
+# 4. Verify WSL Status & Check Linux Distribution (Ubuntu, Kali Linux, Debian, etc.)
 Write-Host ""
-Write-Host "[*] Verifying Windows Subsystem for Linux (WSL) status..." -ForegroundColor Cyan
-$WslStatus = $null
+Write-Host "[*] Checking Windows Subsystem for Linux (WSL) status..." -ForegroundColor Cyan
+
+$WslInstalled = $false
 try {
-    $WslStatus = & wsl --status 2>&1
+    $WslStatus = & wsl.exe --status 2>&1
+    if ($LASTEXITCODE -eq 0 -and $null -ne $WslStatus) {
+        $WslInstalled = $true
+    }
 } catch {
-    $WslStatus = $null
+    $WslInstalled = $false
 }
 
-if ($LASTEXITCODE -ne 0 -or $null -eq $WslStatus) {
-    Write-Host ""
-    Write-Host "[!] WSL is not currently active on this machine." -ForegroundColor Yellow
-    Write-Host "    Attempting automated WSL installation (Ubuntu)..." -ForegroundColor Cyan
+if (-not $WslInstalled) {
+    Write-Host "[!] WSL is not currently installed or active." -ForegroundColor Yellow
+    Write-Host "[*] Installing WSL and Ubuntu Linux..." -ForegroundColor Cyan
     
     $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $IsAdmin) {
@@ -88,18 +91,38 @@ if ($LASTEXITCODE -ne 0 -or $null -eq $WslStatus) {
         Write-Host "[!] Administrator permissions are required to enable WSL for the first time." -ForegroundColor Red
         Write-Host "    Please right-click PowerShell -> 'Run as Administrator', then run:" -ForegroundColor Yellow
         Write-Host "    wsl --install -d Ubuntu" -ForegroundColor White
-        Write-Host "    After rebooting your PC, run this script again." -ForegroundColor Yellow
+        Write-Host "    After system reboot, re-run this setup." -ForegroundColor Yellow
         Write-Host ""
         Read-Host "Press Enter to exit..."
         exit 1
     } else {
-        & wsl --install -d Ubuntu --no-launch
-        Write-Host ""
-        Write-Host "[✓] WSL installed. A system reboot may be required before running Hadoop." -ForegroundColor Green
-        Read-Host "Press Enter to continue..."
+        & wsl.exe --install -d Ubuntu --web-download
+        Write-Host "[✓] WSL installed. System reboot may be required." -ForegroundColor Green
     }
 } else {
     Write-Host "[✓] WSL is active and operational." -ForegroundColor Green
+}
+
+# Check for installed Linux distribution
+Write-Host "[*] Checking for installed Linux distributions in WSL (Ubuntu, Kali, Debian)..." -ForegroundColor Cyan
+$Distros = @()
+try {
+    $RawDistros = & wsl.exe --list --quiet 2>$null
+    $Distros = $RawDistros | ForEach-Object { ($_ -replace "`0", "").Trim() } | Where-Object { $_ -ne "" }
+} catch {
+    $Distros = @()
+}
+
+if ($Distros.Count -eq 0) {
+    Write-Host "[!] No Linux distribution detected in WSL." -ForegroundColor Yellow
+    Write-Host "[*] Installing Ubuntu Linux distribution for WSL..." -ForegroundColor Cyan
+    & wsl.exe --install -d Ubuntu --web-download
+    if ($LASTEXITCODE -ne 0) {
+        & wsl.exe --install -d Ubuntu
+    }
+    Write-Host "[✓] Ubuntu Linux distribution installation completed." -ForegroundColor Green
+} else {
+    Write-Host "[✓] Detected Linux distribution(s): $($Distros -join ', ')" -ForegroundColor Green
 }
 
 # 5. Create Desktop Shortcuts
@@ -125,13 +148,14 @@ try {
     Write-Host "[-] Note: Desktop shortcuts could not be registered automatically." -ForegroundColor Gray
 }
 
-# 6. Execute Hadoop Setup inside WSL
+# 6. Execute Hadoop Setup inside WSL native Linux environment
 Write-Host ""
-Write-Host "[*] Initiating automated Hadoop setup inside WSL..." -ForegroundColor Cyan
+Write-Host "[*] Setting up Hadoop natively inside WSL Linux filesystem..." -ForegroundColor Cyan
 Write-Host "------------------------------------------------------------------------------" -ForegroundColor DarkGray
 
-$WslTargetScript = "cd `$(wslpath -u '$TargetDir') 2>/dev/null || cd /mnt/c/Users/$env:USERNAME/Desktop/Hadoop; chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; ./install.sh"
-& wsl -e bash -c $WslTargetScript
+$NormalizedTarget = $TargetDir.Replace('\', '/')
+$WslTargetScript = "mkdir -p ~/Hadoop && (cp -rf `"`$(wslpath -u '$NormalizedTarget')`"/* ~/Hadoop/ 2>/dev/null || git clone https://github.com/fridayslifes/Hadoop.git ~/Hadoop 2>/dev/null || true); cd ~/Hadoop && sed -i 's/\r$//' install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true; ./install.sh"
+& wsl.exe -e bash -c $WslTargetScript
 
 Write-Host ""
 Write-Host "==============================================================================" -ForegroundColor Green

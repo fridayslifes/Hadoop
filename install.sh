@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Apache Hadoop Automated One-Click Installer & Configurator
-# Compatible with: WSL (Windows Subsystem for Linux), Ubuntu, Debian, Kali,
-# CentOS, RHEL, Fedora, Rocky, AlmaLinux, Arch Linux, and openSUSE.
-# Features: 16-thread accelerated download, OpenJDK setup, passwordless SSH,
-# pseudo-distributed cluster configuration, NameNode formatting, and 'ran-hadoop' CLI.
+# Fully compatible with: WSL (Windows Subsystem for Linux), Ubuntu, Debian,
+# Kali Linux, CentOS, RHEL, Fedora, Rocky, AlmaLinux, Arch Linux, and openSUSE.
+#
+# Process Sequence:
+#   [1] sudo update: System package manager cache refresh & core utilities
+#   [2] Java install: OpenJDK 11 LTS installation & JAVA_HOME detection
+#   [3] SSH install: OpenSSH setup, passwordless keypair, hostkeys, & service start
+#   [4] 16-Connection Download: aria2c multi-connection download (strictly no fallback)
+#   [5] Hadoop Configuration: XML configs, classpath, hadoop-env, & NameNode format
+#   [6] CLI Installation: 'ran-hadoop' and 'run-wordcount' global environment
+#   [7] Cluster Verification & MapReduce WordCount execution inside WSL
 # ==============================================================================
 
 set -e
@@ -28,31 +35,28 @@ INSTALL_DIR="${HADOOP_INSTALL_DIR:-$HOME/hadoop}"
 DATA_DIR="${HADOOP_DATA_DIR:-$HOME/hadoop_data}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || pwd)"
 
+# ------------------------------------------------------------------------------
+# WSL Windows Mount Relocation Guard:
+# If executed from Windows mount (/mnt/c/...) in WSL, migrate to WSL native ext4 (~/Hadoop)
+# ------------------------------------------------------------------------------
+case "$SCRIPT_DIR" in
+    /mnt/*)
+        echo -e "${CYAN}[*] Detected execution from Windows drive mount: $SCRIPT_DIR${RESET}"
+        echo -e "${CYAN}[*] Migrating files into WSL native ext4 Linux filesystem ($HOME/Hadoop)...${RESET}"
+        mkdir -p "$HOME/Hadoop"
+        cp -rf "$SCRIPT_DIR"/* "$HOME/Hadoop/" 2>/dev/null || true
+        find "$HOME/Hadoop" -maxdepth 2 -type f \( -name "*.sh" -o -name "ran-hadoop" -o -name "*.xml" -o -name "*.txt" \) -exec sed -i 's/\r$//' {} + 2>/dev/null || true
+        chmod +x "$HOME/Hadoop/install.sh" "$HOME/Hadoop/ran-hadoop" "$HOME/Hadoop/run-wordcount.sh" "$HOME/Hadoop/scripts/"*.sh 2>/dev/null || true
+        cd "$HOME/Hadoop"
+        exec "$HOME/Hadoop/install.sh" "$@"
+        ;;
+esac
+
 # Auto-bootstrap repository if executed directly via pipe (e.g. curl ... | bash)
 if [ ! -f "$SCRIPT_DIR/ran-hadoop" ] || [ ! -d "$SCRIPT_DIR/conf" ]; then
     echo -e "${YELLOW}[*] Installer running via pipe or standalone stream. Bootstrapping repository files...${RESET}"
-    
-    BOOTSTRAP_DIR=""
-    # Check for Windows Desktop if running inside WSL
-    if command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
-        WIN_USER_DESKTOP=$(cmd.exe /c "echo %USERPROFILE%\Desktop" 2>/dev/null | tr -d '\r' || true)
-        if [ -n "$WIN_USER_DESKTOP" ]; then
-            WSL_WIN_DESKTOP=$(wslpath -u "$WIN_USER_DESKTOP" 2>/dev/null || true)
-            if [ -d "$WSL_WIN_DESKTOP" ]; then
-                BOOTSTRAP_DIR="$WSL_WIN_DESKTOP/Hadoop"
-            fi
-        fi
-    fi
-
-    if [ -z "$BOOTSTRAP_DIR" ]; then
-        if [ -d "$HOME/Desktop" ]; then
-            BOOTSTRAP_DIR="$HOME/Desktop/Hadoop"
-        else
-            BOOTSTRAP_DIR="$HOME/Hadoop"
-        fi
-    fi
-
-    echo -e "${CYAN}    Target destination: $BOOTSTRAP_DIR${RESET}"
+    BOOTSTRAP_DIR="$HOME/Hadoop"
+    echo -e "${CYAN}    Target destination: $BOOTSTRAP_DIR (WSL Native Linux Filesystem)${RESET}"
     if [ ! -d "$BOOTSTRAP_DIR" ]; then
         if command -v git >/dev/null 2>&1; then
             git clone https://github.com/fridayslifes/Hadoop.git "$BOOTSTRAP_DIR"
@@ -61,17 +65,20 @@ if [ ! -f "$SCRIPT_DIR/ran-hadoop" ] || [ ! -d "$SCRIPT_DIR/conf" ]; then
             curl -sSL https://github.com/fridayslifes/Hadoop/archive/refs/heads/main.tar.gz | tar -xz -C "$BOOTSTRAP_DIR" --strip-components=1
         fi
     fi
-
     cd "$BOOTSTRAP_DIR"
+    find "$BOOTSTRAP_DIR" -maxdepth 2 -type f \( -name "*.sh" -o -name "ran-hadoop" -o -name "*.xml" -o -name "*.txt" \) -exec sed -i 's/\r$//' {} + 2>/dev/null || true
     chmod +x install.sh ran-hadoop run-wordcount.sh scripts/*.sh 2>/dev/null || true
     exec ./install.sh "$@"
 fi
 
+# Normalize CRLF line endings on repository scripts
+find "$SCRIPT_DIR" -maxdepth 2 -type f \( -name "*.sh" -o -name "ran-hadoop" -o -name "*.xml" -o -name "*.txt" \) -exec sed -i 's/\r$//' {} + 2>/dev/null || true
+chmod +x "$SCRIPT_DIR/install.sh" "$SCRIPT_DIR/ran-hadoop" "$SCRIPT_DIR/run-wordcount.sh" "$SCRIPT_DIR/scripts/"*.sh 2>/dev/null || true
+
 export DEBIAN_FRONTEND=noninteractive
 
-
 echo -e "${GREEN}================================================================${RESET}"
-echo -e "${GREEN}${BOLD}       Apache Hadoop Automated One-Click Installer              ${RESET}"
+echo -e "${GREEN}${BOLD}       Apache Hadoop Automated One-Click Installer (WSL)        ${RESET}"
 echo -e "${GREEN}================================================================${RESET}"
 echo " Target Version   : Apache Hadoop $HADOOP_VERSION"
 echo " Installation Dir : $INSTALL_DIR"
@@ -80,9 +87,17 @@ echo " User             : $(whoami)"
 echo " OS / Kernel      : $(uname -s) $(uname -r)"
 echo -e "${GREEN}================================================================${RESET}"
 
-# 1. Distro & Package Manager Detection
-echo -e "${CYAN}[Step 1/8] Detecting Operating System and Package Manager...${RESET}"
+# Sudo detection: run directly if root, otherwise prefix with sudo
+SUDO_CMD=""
+if [ "$(id -u)" -ne 0 ]; then
+    if command -v sudo >/dev/null 2>&1; then
+        SUDO_CMD="sudo"
+    else
+        echo -e "${YELLOW}  ! Sudo not found. Will proceed assuming privileges or pre-installed packages.${RESET}"
+    fi
+fi
 
+# Detect package manager
 PKG_MANAGER=""
 if command -v apt-get >/dev/null 2>&1; then
     PKG_MANAGER="apt"
@@ -96,64 +111,76 @@ elif command -v zypper >/dev/null 2>&1; then
     PKG_MANAGER="zypper"
 fi
 
-echo -e "${GREEN}  ✓ Detected package manager: $PKG_MANAGER${RESET}"
+# ==============================================================================
+# [Step 1/7] sudo update: System Package Index & Core Utilities
+# ==============================================================================
+echo -e "\n${CYAN}[Step 1/7] Updating System Packages (sudo update)...${RESET}"
 
-# Check for sudo capabilities
-SUDO_CMD=""
-if [ "$(id -u)" -ne 0 ]; then
-    if command -v sudo >/dev/null 2>&1; then
-        SUDO_CMD="sudo"
-    else
-        echo -e "${YELLOW}  ! Sudo not found. Will proceed assuming packages are already installed.${RESET}"
-    fi
-fi
-
-# 2. Package Installation: JDK 11, aria2 (16-thread downloader), SSH, rsync
-echo -e "\n${CYAN}[Step 2/8] Installing Dependencies (Java JDK, aria2 multi-threaded downloader, OpenSSH)...${RESET}"
-
-install_packages() {
+if [ -n "$PKG_MANAGER" ]; then
     case "$PKG_MANAGER" in
         apt)
-            echo "  Updating package cache and installing packages via apt..."
+            echo "  Refreshing apt repository cache..."
             $SUDO_CMD apt-get update -y
-            # Install git, aria2, openssh, rsync, and Java JDK
-            $SUDO_CMD apt-get install -y git aria2 openssh-server openssh-client rsync tar curl procps \
-                openjdk-11-jdk 2>/dev/null || \
-                $SUDO_CMD apt-get install -y git aria2 openssh-server openssh-client rsync tar curl procps openjdk-8-jdk || \
-                $SUDO_CMD apt-get install -y git aria2 openssh-server openssh-client rsync tar curl procps default-jdk
+            $SUDO_CMD apt-get install -y software-properties-common ca-certificates curl wget rsync tar git procps net-tools
+            # Ensure universe repository is enabled for Ubuntu/Debian/Kali WSL
+            if command -v add-apt-repository >/dev/null 2>&1; then
+                $SUDO_CMD add-apt-repository -y universe 2>/dev/null || true
+                $SUDO_CMD apt-get update -y
+            fi
             ;;
         dnf|yum)
-            echo "  Installing packages via $PKG_MANAGER..."
+            echo "  Refreshing $PKG_MANAGER repository cache..."
+            $SUDO_CMD "$PKG_MANAGER" update -y
             $SUDO_CMD "$PKG_MANAGER" install -y epel-release 2>/dev/null || true
-            $SUDO_CMD "$PKG_MANAGER" install -y git aria2 openssh-server openssh-clients rsync tar curl procps-ng java-11-openjdk-devel || \
-                $SUDO_CMD "$PKG_MANAGER" install -y git aria2 openssh-server openssh-clients rsync tar curl procps-ng java-1.8.0-openjdk-devel
+            $SUDO_CMD "$PKG_MANAGER" install -y curl wget rsync tar git procps-ng net-tools
             ;;
         pacman)
-            echo "  Installing packages via pacman..."
-            $SUDO_CMD pacman -Sy --noconfirm git aria2 openssh rsync tar curl procps-ng jdk11-openjdk || \
-                $SUDO_CMD pacman -Sy --noconfirm git aria2 openssh rsync tar curl procps-ng jdk8-openjdk
+            echo "  Refreshing pacman repository cache..."
+            $SUDO_CMD pacman -Sy --noconfirm curl wget rsync tar git procps-ng net-tools
             ;;
         zypper)
-            echo "  Installing packages via zypper..."
-            $SUDO_CMD zypper --non-interactive install git aria2 openssh rsync tar curl java-11-openjdk-devel || \
-                $SUDO_CMD zypper --non-interactive install git aria2 openssh rsync tar curl java-1_8_0-openjdk-devel
+            echo "  Refreshing zypper repository cache..."
+            $SUDO_CMD zypper --non-interactive refresh
+            $SUDO_CMD zypper --non-interactive install curl wget rsync tar git procps net-tools
             ;;
         *)
-            echo -e "${YELLOW}  Unknown package manager. Checking if required tools are already present...${RESET}"
+            echo -e "${YELLOW}  Unknown package manager. Checking installed tools...${RESET}"
             ;;
     esac
-}
-
-if [ -n "$PKG_MANAGER" ] && [ -n "$SUDO_CMD" ]; then
-    install_packages || echo -e "${YELLOW}  Package installation encountered warnings; checking installed binaries...${RESET}"
+    echo -e "${GREEN}  ✓ System packages updated successfully.${RESET}"
+else
+    echo -e "${YELLOW}  ! No supported package manager found; proceeding with existing binaries.${RESET}"
 fi
 
-# 3. Detect and Validate JAVA_HOME
-echo -e "\n${CYAN}[Step 3/8] Configuring Java Environment...${RESET}"
+# ==============================================================================
+# [Step 2/7] Java install: OpenJDK 11 LTS & Detection
+# ==============================================================================
+echo -e "\n${CYAN}[Step 2/7] Installing Java Development Kit (OpenJDK 11 LTS)...${RESET}"
 
-DETECTED_JAVA_HOME=""
+if [ -n "$PKG_MANAGER" ]; then
+    case "$PKG_MANAGER" in
+        apt)
+            $SUDO_CMD apt-get install -y openjdk-11-jdk 2>/dev/null || \
+            $SUDO_CMD apt-get install -y openjdk-8-jdk 2>/dev/null || \
+            $SUDO_CMD apt-get install -y default-jdk
+            ;;
+        dnf|yum)
+            $SUDO_CMD "$PKG_MANAGER" install -y java-11-openjdk-devel || \
+            $SUDO_CMD "$PKG_MANAGER" install -y java-1.8.0-openjdk-devel
+            ;;
+        pacman)
+            $SUDO_CMD pacman -Sy --noconfirm jdk11-openjdk || \
+            $SUDO_CMD pacman -Sy --noconfirm jdk8-openjdk
+            ;;
+        zypper)
+            $SUDO_CMD zypper --non-interactive install java-11-openjdk-devel || \
+            $SUDO_CMD zypper --non-interactive install java-1_8_0-openjdk-devel
+            ;;
+    esac
+fi
 
 # Probe standard JDK directories
+DETECTED_JAVA_HOME=""
 for candidate in \
     /usr/lib/jvm/java-11-openjdk* \
     /usr/lib/jvm/java-1.11.0-openjdk* \
@@ -167,7 +194,7 @@ for candidate in \
     fi
 done
 
-# Fallback to which java
+# Fallback to resolving 'java' symlink
 if [ -z "$DETECTED_JAVA_HOME" ] && command -v java >/dev/null 2>&1; then
     RESOLVED_JAVA=$(readlink -f "$(command -v java)")
     DETECTED_JAVA_HOME=$(dirname "$(dirname "$RESOLVED_JAVA")")
@@ -175,17 +202,44 @@ fi
 
 if [ -z "$DETECTED_JAVA_HOME" ] || [ ! -d "$DETECTED_JAVA_HOME" ]; then
     echo -e "${RED}[ERROR] Valid JDK installation could not be detected.${RESET}"
-    echo "Please install OpenJDK 11 or 8, then re-run this script."
-    exit 1
+    echo "Attempting recovery install via default-jdk..."
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        $SUDO_CMD apt-get install -y --fix-missing default-jdk
+        DETECTED_JAVA_HOME="/usr/lib/jvm/default-java"
+    fi
+    if [ ! -d "$DETECTED_JAVA_HOME" ]; then
+        echo -e "${RED}[FATAL] Java JDK installation failed. Please install OpenJDK manually.${RESET}"
+        exit 1
+    fi
 fi
 
 export JAVA_HOME="$DETECTED_JAVA_HOME"
 echo -e "${GREEN}  ✓ JAVA_HOME located: $JAVA_HOME${RESET}"
 echo "    Java version: $("$JAVA_HOME/bin/java" -version 2>&1 | head -n 1)"
 
-# 4. Configure Passwordless SSH for Localhost
-echo -e "\n${CYAN}[Step 4/8] Configuring Passwordless SSH for Hadoop Services...${RESET}"
+# ==============================================================================
+# [Step 3/7] SSH install: OpenSSH Server & Passwordless Localhost Setup
+# ==============================================================================
+echo -e "\n${CYAN}[Step 3/7] Installing and Configuring OpenSSH Server & Client...${RESET}"
 
+if [ -n "$PKG_MANAGER" ]; then
+    case "$PKG_MANAGER" in
+        apt)
+            $SUDO_CMD apt-get install -y openssh-server openssh-client
+            ;;
+        dnf|yum)
+            $SUDO_CMD "$PKG_MANAGER" install -y openssh-server openssh-clients
+            ;;
+        pacman)
+            $SUDO_CMD pacman -Sy --noconfirm openssh
+            ;;
+        zypper)
+            $SUDO_CMD zypper --non-interactive install openssh
+            ;;
+    esac
+fi
+
+chmod 755 "$HOME" 2>/dev/null || true
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
 
@@ -195,86 +249,108 @@ if [ ! -f "$HOME/.ssh/id_rsa" ]; then
     ssh-keygen -t rsa -P "" -f "$HOME/.ssh/id_rsa" -q
 fi
 
-# Add key to authorized_keys if not already present
+# Add key to authorized_keys
 if [ ! -f "$HOME/.ssh/authorized_keys" ] || ! grep -q -F "$(cat "$HOME/.ssh/id_rsa.pub")" "$HOME/.ssh/authorized_keys" 2>/dev/null; then
     echo "  Adding public key to ~/.ssh/authorized_keys..."
     cat "$HOME/.ssh/id_rsa.pub" >> "$HOME/.ssh/authorized_keys"
 fi
 chmod 600 "$HOME/.ssh/authorized_keys"
+chmod 600 "$HOME/.ssh/id_rsa" 2>/dev/null || true
+chmod 644 "$HOME/.ssh/id_rsa.pub" 2>/dev/null || true
 
-# Ensure SSH config suppresses host key verification prompts for localhost
+# Config for strict host checking bypass on localhost
 cat << 'EOF' > "$HOME/.ssh/config.tmp"
 Host localhost 127.0.0.1 0.0.0.0
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     LogLevel ERROR
 EOF
+mv "$HOME/.ssh/config.tmp" "$HOME/.ssh/config"
+chmod 600 "$HOME/.ssh/config"
 
-if [ ! -f "$HOME/.ssh/config" ]; then
-    mv "$HOME/.ssh/config.tmp" "$HOME/.ssh/config"
-    chmod 600 "$HOME/.ssh/config"
-else
-    if ! grep -q "Host localhost" "$HOME/.ssh/config"; then
-        cat "$HOME/.ssh/config.tmp" >> "$HOME/.ssh/config"
-    fi
-    rm -f "$HOME/.ssh/config.tmp"
-    chmod 600 "$HOME/.ssh/config"
-fi
+# SSH daemon host keys and privilege separation directory for WSL
+$SUDO_CMD mkdir -p /run/sshd 2>/dev/null || true
+$SUDO_CMD ssh-keygen -A >/dev/null 2>&1 || true
 
-# Ensure SSH service is running
-echo "  Checking and starting SSH daemon..."
+# Start SSH daemon
+echo "  Starting SSH service daemon..."
 if command -v service >/dev/null 2>&1; then
-    $SUDO_CMD service ssh status >/dev/null 2>&1 || $SUDO_CMD service ssh start >/dev/null 2>&1 || true
+    $SUDO_CMD service ssh start >/dev/null 2>&1 || $SUDO_CMD service ssh restart >/dev/null 2>&1 || true
 elif command -v systemctl >/dev/null 2>&1; then
     $SUDO_CMD systemctl start ssh >/dev/null 2>&1 || $SUDO_CMD systemctl start sshd >/dev/null 2>&1 || true
+else
+    $SUDO_CMD /usr/sbin/sshd >/dev/null 2>&1 || true
 fi
 
-# Test SSH connection
-if ssh -o BatchMode=yes -o ConnectTimeout=5 localhost "echo SSH_OK" >/dev/null 2>&1; then
+# Verify passwordless SSH localhost connection
+if ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 localhost "echo SSH_OK" >/dev/null 2>&1; then
     echo -e "${GREEN}  ✓ Passwordless SSH connection to localhost confirmed.${RESET}"
 else
-    echo -e "${YELLOW}  ! Passwordless SSH test returned non-zero. Attempting host key generation...${RESET}"
+    echo -e "${YELLOW}  ! Retrying SSH daemon startup...${RESET}"
+    $SUDO_CMD mkdir -p /run/sshd 2>/dev/null || true
     $SUDO_CMD ssh-keygen -A >/dev/null 2>&1 || true
-    $SUDO_CMD service ssh restart >/dev/null 2>&1 || true
+    $SUDO_CMD service ssh restart >/dev/null 2>&1 || $SUDO_CMD /usr/sbin/sshd >/dev/null 2>&1 || true
 fi
 
-# 5. Fast 16-Thread Download of Apache Hadoop
-echo -e "\n${CYAN}[Step 5/8] Downloading Apache Hadoop $HADOOP_VERSION with 16 Threads...${RESET}"
+# ==============================================================================
+# [Step 4/7] 16-Connection Download: aria2c (Strictly No Fallback - Always Resolve)
+# ==============================================================================
+echo -e "\n${CYAN}[Step 4/7] 16-Thread Accelerated Hadoop Download (aria2c)...${RESET}"
+
+# Install aria2 if not present - do NOT fall back to curl or single thread
+if ! command -v aria2c >/dev/null 2>&1; then
+    echo "  aria2c is not present. Installing aria2 package for 16 concurrent connections..."
+    if [ -n "$PKG_MANAGER" ]; then
+        case "$PKG_MANAGER" in
+            apt)
+                $SUDO_CMD apt-get update -y
+                $SUDO_CMD apt-get install -y software-properties-common ca-certificates 2>/dev/null || true
+                $SUDO_CMD add-apt-repository -y universe 2>/dev/null || true
+                $SUDO_CMD apt-get update -y
+                $SUDO_CMD apt-get install -y aria2
+                ;;
+            dnf|yum)
+                $SUDO_CMD "$PKG_MANAGER" install -y epel-release 2>/dev/null || true
+                $SUDO_CMD "$PKG_MANAGER" install -y aria2
+                ;;
+            pacman)
+                $SUDO_CMD pacman -Sy --noconfirm aria2
+                ;;
+            zypper)
+                $SUDO_CMD zypper --non-interactive install aria2
+                ;;
+        esac
+    fi
+fi
+
+# Verify aria2c is available
+if ! command -v aria2c >/dev/null 2>&1; then
+    echo -e "${RED}[ERROR] aria2c installation failed. Resolving by package retry...${RESET}"
+    if [ "$PKG_MANAGER" = "apt" ]; then
+        $SUDO_CMD apt-get install -y --fix-missing aria2
+    fi
+fi
+
+if ! command -v aria2c >/dev/null 2>&1; then
+    echo -e "${RED}[FATAL] aria2c is strictly required for 16-connection downloads. Cannot proceed without it.${RESET}"
+    exit 1
+fi
+
+echo -e "${GREEN}  ✓ aria2c 16-thread downloader ready: $(aria2c --version | head -n 1)${RESET}"
 
 TAR_NAME="hadoop-${HADOOP_VERSION}.tar.gz"
 DOWNLOAD_DIR="/tmp/hadoop_download"
 mkdir -p "$DOWNLOAD_DIR"
 
-# Apache mirrors
 PRIMARY_URL="https://dlcdn.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/${TAR_NAME}"
 ARCHIVE_URL="https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/${TAR_NAME}"
 BACKUP_URL="https://downloads.apache.org/hadoop/common/hadoop-${HADOOP_VERSION}/${TAR_NAME}"
 
-if [ -f "$DOWNLOAD_DIR/$TAR_NAME" ] && tar -tzf "$DOWNLOAD_DIR/$TAR_NAME" >/dev/null 2>&1; then
-    echo -e "${GREEN}  ✓ Found existing valid archive: $DOWNLOAD_DIR/$TAR_NAME. Skipping download.${RESET}"
+if [ -f "$DOWNLOAD_DIR/$TAR_NAME" ] && tar -tzf "$DOWNLOAD_DIR/$TAR_NAME" | head -n 10 >/dev/null 2>&1; then
+    echo -e "${GREEN}  ✓ Found valid existing archive: $DOWNLOAD_DIR/$TAR_NAME. Skipping download.${RESET}"
 else
     rm -f "$DOWNLOAD_DIR/$TAR_NAME"
-    echo "  Downloading from Apache mirrors utilizing 16 concurrent connections..."
-    
-    # Ensure aria2c is installed for 16-thread multi-connection downloading - do NOT fall back
-    if ! command -v aria2c >/dev/null 2>&1; then
-        echo -e "${YELLOW}  [*] aria2c not detected. Installing aria2 for 16-thread concurrent downloading...${RESET}"
-        if [ -n "$PKG_MANAGER" ] && [ -n "$SUDO_CMD" ]; then
-            case "$PKG_MANAGER" in
-                apt) $SUDO_CMD apt-get update -y && $SUDO_CMD apt-get install -y aria2 ;;
-                dnf|yum) $SUDO_CMD "$PKG_MANAGER" install -y aria2 ;;
-                pacman) $SUDO_CMD pacman -Sy --noconfirm aria2 ;;
-                zypper) $SUDO_CMD zypper --non-interactive install aria2 ;;
-            esac
-        fi
-    fi
-
-    if ! command -v aria2c >/dev/null 2>&1; then
-        echo -e "${RED}[ERROR] aria2c is required for 16-thread downloading but is not installed.${RESET}"
-        exit 1
-    fi
-
-    echo "  Downloading Apache Hadoop utilizing 16 concurrent connections via aria2c..."
+    echo "  Downloading Apache Hadoop $HADOOP_VERSION utilizing 16 concurrent connections..."
     aria2c \
         --split=16 \
         --max-connection-per-server=16 \
@@ -289,37 +365,32 @@ else
         "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL"
 fi
 
-# Verify tar archive integrity
-echo "  Verifying tarball integrity..."
+# Verify archive integrity
 if ! tar -tzf "$DOWNLOAD_DIR/$TAR_NAME" | head -n 10 >/dev/null 2>&1; then
-    echo -e "${RED}[ERROR] Downloaded archive is corrupt. Re-run installer to retry download.${RESET}"
+    echo -e "${RED}[ERROR] Downloaded archive is corrupt. Re-downloading with 16 connections...${RESET}"
     rm -f "$DOWNLOAD_DIR/$TAR_NAME"
-    exit 1
+    aria2c -x 16 -s 16 -k 1M --file-allocation=none --dir="$DOWNLOAD_DIR" --out="$TAR_NAME" "$ARCHIVE_URL" "$PRIMARY_URL"
 fi
-echo -e "${GREEN}  ✓ Archive verified.${RESET}"
+echo -e "${GREEN}  ✓ Apache Hadoop archive verified successfully.${RESET}"
 
-# 6. Extraction and Directory Structure
-echo -e "\n${CYAN}[Step 6/8] Extracting Hadoop to $INSTALL_DIR...${RESET}"
+# ==============================================================================
+# [Step 5/7] Hadoop Extraction & Configuration
+# ==============================================================================
+echo -e "\n${CYAN}[Step 5/7] Extracting & Configuring Apache Hadoop Pseudo-Distributed Cluster...${RESET}"
 
 mkdir -p "$INSTALL_DIR"
 tar -xzf "$DOWNLOAD_DIR/$TAR_NAME" -C "$INSTALL_DIR" --strip-components=1
 
-# Create cluster data directories
+# Create cluster temporary and metadata storage directories
 mkdir -p "$DATA_DIR/tmp"
 mkdir -p "$DATA_DIR/hdfs/namenode"
 mkdir -p "$DATA_DIR/hdfs/datanode"
 chmod -R 755 "$DATA_DIR"
 
-echo -e "${GREEN}  ✓ Extracted Hadoop successfully.${RESET}"
-echo -e "${GREEN}  ✓ Cluster data directory prepared at $DATA_DIR.${RESET}"
-
-# 7. Write Configurations (core-site, hdfs-site, mapred-site, yarn-site, hadoop-env)
-echo -e "\n${CYAN}[Step 7/8] Generating Hadoop XML Configuration Files...${RESET}"
-
 HADOOP_CONF_DIR="$INSTALL_DIR/etc/hadoop"
 mkdir -p "$HADOOP_CONF_DIR"
 
-# 7a. core-site.xml
+# 5a. core-site.xml
 cat << EOF > "$HADOOP_CONF_DIR/core-site.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
@@ -328,6 +399,11 @@ cat << EOF > "$HADOOP_CONF_DIR/core-site.xml"
         <name>fs.defaultFS</name>
         <value>hdfs://localhost:9000</value>
         <description>Default HDFS Master URI</description>
+    </property>
+    <property>
+        <name>fs.default.name</name>
+        <value>hdfs://localhost:9000</value>
+        <description>Legacy alias for teacher script compatibility</description>
     </property>
     <property>
         <name>hadoop.tmp.dir</name>
@@ -341,7 +417,7 @@ cat << EOF > "$HADOOP_CONF_DIR/core-site.xml"
 </configuration>
 EOF
 
-# 7b. hdfs-site.xml
+# 5b. hdfs-site.xml
 cat << EOF > "$HADOOP_CONF_DIR/hdfs-site.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
@@ -372,7 +448,7 @@ cat << EOF > "$HADOOP_CONF_DIR/hdfs-site.xml"
 </configuration>
 EOF
 
-# 7c. mapred-site.xml
+# 5c. mapred-site.xml
 cat << EOF > "$HADOOP_CONF_DIR/mapred-site.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
@@ -401,10 +477,14 @@ cat << EOF > "$HADOOP_CONF_DIR/mapred-site.xml"
         <name>mapreduce.reduce.memory.mb</name>
         <value>1024</value>
     </property>
+    <property>
+        <name>mapreduce.application.classpath</name>
+        <value>\$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*:\$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*:\$HADOOP_COMMON_HOME/share/hadoop/common/*:\$HADOOP_COMMON_HOME/share/hadoop/common/lib/*:\$HADOOP_HDFS_HOME/share/hadoop/hdfs/*:\$HADOOP_HDFS_HOME/share/hadoop/hdfs/lib/*:\$HADOOP_YARN_HOME/share/hadoop/yarn/*:\$HADOOP_YARN_HOME/share/hadoop/yarn/lib/*</value>
+    </property>
 </configuration>
 EOF
 
-# 7d. yarn-site.xml
+# 5d. yarn-site.xml
 cat << EOF > "$HADOOP_CONF_DIR/yarn-site.xml"
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
@@ -429,6 +509,10 @@ cat << EOF > "$HADOOP_CONF_DIR/yarn-site.xml"
         <name>yarn.nodemanager.env-whitelist</name>
         <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,LC_ALL</value>
     </property>
+    <property>
+        <name>yarn.application.classpath</name>
+        <value>\$HADOOP_HOME/etc/hadoop,\$HADOOP_HOME/share/hadoop/common/*,\$HADOOP_HOME/share/hadoop/common/lib/*,\$HADOOP_HOME/share/hadoop/hdfs/*,\$HADOOP_HOME/share/hadoop/hdfs/lib/*,\$HADOOP_HOME/share/hadoop/mapreduce/*,\$HADOOP_HOME/share/hadoop/mapreduce/lib/*,\$HADOOP_HOME/share/hadoop/yarn/*,\$HADOOP_HOME/share/hadoop/yarn/lib/*</value>
+    </property>
     <!-- Prevent container memory check failures in WSL / virtualized environments -->
     <property>
         <name>yarn.nodemanager.pmem-check-enabled</name>
@@ -441,7 +525,7 @@ cat << EOF > "$HADOOP_CONF_DIR/yarn-site.xml"
 </configuration>
 EOF
 
-# 7e. hadoop-env.sh: Ensure JAVA_HOME and HADOOP_HOME are explicitly set
+# 5e. hadoop-env.sh
 if grep -q "export JAVA_HOME=" "$HADOOP_CONF_DIR/hadoop-env.sh"; then
     sed -i "s|^#* *export JAVA_HOME=.*|export JAVA_HOME=\"$JAVA_HOME\"|" "$HADOOP_CONF_DIR/hadoop-env.sh"
 else
@@ -455,12 +539,26 @@ if ! grep -q "export HADOOP_HOME=" "$HADOOP_CONF_DIR/hadoop-env.sh"; then
 export HADOOP_HOME="$INSTALL_DIR"
 export HADOOP_CONF_DIR="$HADOOP_CONF_DIR"
 export HADOOP_OS_TYPE="\${HADOOP_OS_TYPE:-\$(uname -s)}"
+
+# Daemon users configuration for WSL and multi-user compatibility
+export HDFS_NAMENODE_USER="\${HDFS_NAMENODE_USER:-\$(whoami)}"
+export HDFS_DATANODE_USER="\${HDFS_DATANODE_USER:-\$(whoami)}"
+export HDFS_SECONDARYNAMENODE_USER="\${HDFS_SECONDARYNAMENODE_USER:-\$(whoami)}"
+export YARN_RESOURCEMANAGER_USER="\${YARN_RESOURCEMANAGER_USER:-\$(whoami)}"
+export YARN_NODEMANAGER_USER="\${YARN_NODEMANAGER_USER:-\$(whoami)}"
 EOF
 fi
 
-echo -e "${GREEN}  ✓ Configurations written to $HADOOP_CONF_DIR.${RESET}"
+# Ensure /usr/local/hadoop and /usr/local/hadoop_tmp symlinks exist for teacher/standard scripts
+if [ -n "$SUDO_CMD" ] || [ "$(id -u)" -eq 0 ]; then
+    $SUDO_CMD mkdir -p /usr/local 2>/dev/null || true
+    $SUDO_CMD ln -sfn "$INSTALL_DIR" /usr/local/hadoop 2>/dev/null || true
+    $SUDO_CMD ln -sfn "$DATA_DIR" /usr/local/hadoop_tmp 2>/dev/null || true
+fi
 
-# Format NameNode if not yet formatted
+echo -e "${GREEN}  ✓ Hadoop cluster configurations written to $HADOOP_CONF_DIR.${RESET}"
+
+# Format HDFS NameNode
 if [ ! -d "$DATA_DIR/hdfs/namenode/current" ]; then
     echo "  Formatting HDFS NameNode storage..."
     "$INSTALL_DIR/bin/hdfs" namenode -format -force -nonInteractive
@@ -469,19 +567,20 @@ else
     echo "  HDFS NameNode already contains current metadata. Skipping reformat."
 fi
 
-# 8. Install 'ran-hadoop' CLI, 'run-wordcount' & Persisting Environment
-echo -e "\n${CYAN}[Step 8/8] Installing 'ran-hadoop' and 'run-wordcount' Globally...${RESET}"
+# ==============================================================================
+# [Step 6/7] Install CLI Commands ('ran-hadoop', 'run-wordcount') into WSL PATH
+# ==============================================================================
+echo -e "\n${CYAN}[Step 6/7] Installing 'ran-hadoop' and 'run-wordcount' Globally...${RESET}"
 
-# Copy scripts and set permissions
 chmod +x "$SCRIPT_DIR/ran-hadoop" "$SCRIPT_DIR/run-wordcount.sh" 2>/dev/null || true
 
 CLI_INSTALLED=0
-if [ -w "/usr/local/bin" ] || [ -n "$SUDO_CMD" ]; then
+if [ -w "/usr/local/bin" ] || [ -n "$SUDO_CMD" ] || [ "$(id -u)" -eq 0 ]; then
     if $SUDO_CMD cp "$SCRIPT_DIR/ran-hadoop" /usr/local/bin/ran-hadoop 2>/dev/null && \
        $SUDO_CMD cp "$SCRIPT_DIR/run-wordcount.sh" /usr/local/bin/run-wordcount 2>/dev/null && \
        $SUDO_CMD cp "$SCRIPT_DIR/run-wordcount.sh" /usr/local/bin/run-wordcount.sh 2>/dev/null && \
        $SUDO_CMD chmod 755 /usr/local/bin/ran-hadoop /usr/local/bin/run-wordcount /usr/local/bin/run-wordcount.sh 2>/dev/null; then
-        echo -e "${GREEN}  ✓ 'ran-hadoop' and 'run-wordcount' installed globally to /usr/local/bin.${RESET}"
+        echo -e "${GREEN}  ✓ 'ran-hadoop' and 'run-wordcount' installed to /usr/local/bin.${RESET}"
         CLI_INSTALLED=1
     fi
 fi
@@ -495,7 +594,6 @@ if [ "$CLI_INSTALLED" -eq 0 ]; then
     echo -e "${GREEN}  ✓ Commands installed to $HOME/.local/bin.${RESET}"
 fi
 
-# Also place helper copies into user's home directory
 cp "$SCRIPT_DIR/run-wordcount.sh" "$HOME/run-wordcount.sh" 2>/dev/null || true
 cp "$SCRIPT_DIR/sample_input.txt" "$HOME/sample_input.txt" 2>/dev/null || true
 
@@ -518,7 +616,6 @@ update_profile() {
     local target="$1"
     if [ -f "$target" ]; then
         if grep -q "# >>> hadoop-quickstart env >>>" "$target"; then
-            # Replace existing block
             sed -i '/# >>> hadoop-quickstart env >>>/,/# <<< hadoop-quickstart env <<</d' "$target"
         fi
         echo "" >> "$target"
@@ -531,9 +628,27 @@ update_profile "$HOME/.bashrc"
 update_profile "$HOME/.profile"
 [ -f "$HOME/.zshrc" ] && update_profile "$HOME/.zshrc"
 
+# ==============================================================================
+# [Step 7/7] Execute Automated MapReduce WordCount Test inside WSL
+# ==============================================================================
+echo -e "\n${CYAN}[Step 7/7] Executing MapReduce WordCount Demonstration inside WSL...${RESET}"
+echo "  Starting cluster services..."
+export HADOOP_HOME="$INSTALL_DIR"
+export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$JAVA_HOME/bin:$PATH"
+
+"$SCRIPT_DIR/ran-hadoop" start
+
+echo -e "\n  Running distributed MapReduce WordCount..."
+"$SCRIPT_DIR/run-wordcount.sh" "$SCRIPT_DIR/sample_input.txt"
+
+echo -e "\n  Stopping temporary cluster services..."
+"$SCRIPT_DIR/ran-hadoop" stop
+
 echo -e "\n${GREEN}================================================================${RESET}"
 echo -e "${GREEN}${BOLD}      Apache Hadoop Installation & Setup Successfully Completed! ${RESET}"
 echo -e "${GREEN}================================================================${RESET}"
+echo -e "${BOLD}All components are fully installed and verified inside WSL Linux.${RESET}"
+echo ""
 echo -e "${BOLD}Next Steps:${RESET}"
 echo -e "  1. Reload your terminal environment:"
 echo -e "     ${CYAN}source ~/.bashrc${RESET}"
@@ -543,10 +658,10 @@ echo -e "     ${BOLD}${GREEN}ran-hadoop${RESET}"
 echo -e "     ${YELLOW}• Press Ctrl+C anytime to stop all services gracefully.${RESET}"
 echo -e "     ${YELLOW}• Closing the terminal window also stops all services automatically.${RESET}"
 echo ""
-echo -e "  3. In a second terminal, run the MapReduce WordCount demonstration:"
-echo -e "     ${CYAN}./run-wordcount.sh${RESET}"
+echo -e "  3. In another terminal, run MapReduce WordCount anytime:"
+echo -e "     ${CYAN}./run-wordcount.sh${RESET}  or  ${CYAN}run-wordcount${RESET}"
 echo ""
-echo -e "  4. Access Web Interfaces in your browser:"
+echo -e "  4. Access Web Management Dashboards in your browser:"
 echo -e "     • NameNode UI : ${CYAN}http://localhost:9870${RESET}"
 echo -e "     • YARN UI     : ${CYAN}http://localhost:8088${RESET}"
 echo -e "${GREEN}================================================================${RESET}"

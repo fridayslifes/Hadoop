@@ -23,6 +23,8 @@ RESET="\033[0m"
 if [ -z "$HADOOP_HOME" ]; then
     if [ -d "$HOME/hadoop" ]; then
         export HADOOP_HOME="$HOME/hadoop"
+    elif [ -d "/usr/local/hadoop" ]; then
+        export HADOOP_HOME="/usr/local/hadoop"
     elif [ -d "/opt/hadoop" ]; then
         export HADOOP_HOME="/opt/hadoop"
     else
@@ -31,7 +33,23 @@ if [ -z "$HADOOP_HOME" ]; then
     fi
 fi
 
+# Auto-detect JAVA_HOME if needed
+if [ -z "$JAVA_HOME" ] && [ -d "/usr/lib/jvm/java-11-openjdk-amd64" ]; then
+    export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+fi
+if [ -n "$JAVA_HOME" ]; then
+    export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
 export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH"
+
+# Daemon users for WSL/multi-user execution
+CURRENT_USER="$(whoami)"
+export HDFS_NAMENODE_USER="${HDFS_NAMENODE_USER:-$CURRENT_USER}"
+export HDFS_DATANODE_USER="${HDFS_DATANODE_USER:-$CURRENT_USER}"
+export HDFS_SECONDARYNAMENODE_USER="${HDFS_SECONDARYNAMENODE_USER:-$CURRENT_USER}"
+export YARN_RESOURCEMANAGER_USER="${YARN_RESOURCEMANAGER_USER:-$CURRENT_USER}"
+export YARN_NODEMANAGER_USER="${YARN_NODEMANAGER_USER:-$CURRENT_USER}"
 
 # Input file determination
 INPUT_FILE="${1:-sample_input.txt}"
@@ -40,10 +58,10 @@ if [ ! -f "$INPUT_FILE" ]; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     if [ -f "$SCRIPT_DIR/$INPUT_FILE" ]; then
         INPUT_FILE="$SCRIPT_DIR/$INPUT_FILE"
+    elif [ -f "$HOME/Hadoop/$INPUT_FILE" ]; then
+        INPUT_FILE="$HOME/Hadoop/$INPUT_FILE"
     elif [ -f "$HOME/$INPUT_FILE" ]; then
         INPUT_FILE="$HOME/$INPUT_FILE"
-    elif [ -f "/mnt/c/Users/admin/hadoop-quickstart/$INPUT_FILE" ]; then
-        INPUT_FILE="/mnt/c/Users/admin/hadoop-quickstart/$INPUT_FILE"
     elif [ -f "$HADOOP_HOME/$INPUT_FILE" ]; then
         INPUT_FILE="$HADOOP_HOME/$INPUT_FILE"
     else
@@ -135,6 +153,10 @@ done
 TOTAL_DISTINCT=$(hdfs dfs -cat "$HDFS_OUTPUT_DIR/part-r-00000" | wc -l)
 echo "----------------------------------------"
 echo -e "Total unique words processed: ${BOLD}$TOTAL_DISTINCT${RESET}"
+hdfs dfs -get -f "$HDFS_OUTPUT_DIR/part-r-00000" ./wordcount_results.txt 2>/dev/null || true
+if [ -f "./wordcount_results.txt" ]; then
+    echo -e "Saved local copy:             ${GREEN}./wordcount_results.txt${RESET}"
+fi
 echo -e "${GREEN}================================================================${RESET}"
 echo -e "To view all output lines: ${BOLD}hdfs dfs -cat $HDFS_OUTPUT_DIR/part-r-00000${RESET}"
 echo -e "To check YARN Web UI:      ${BOLD}http://localhost:8088${RESET}"

@@ -27,6 +27,12 @@
         <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,LC_ALL</value>
     </property>
 
+    <!-- Application Classpath for YARN Containers in Hadoop 3.x -->
+    <property>
+        <name>yarn.application.classpath</name>
+        <value>$HADOOP_HOME/etc/hadoop,$HADOOP_HOME/share/hadoop/common/*,$HADOOP_HOME/share/hadoop/common/lib/*,$HADOOP_HOME/share/hadoop/hdfs/*,$HADOOP_HOME/share/hadoop/hdfs/lib/*,$HADOOP_HOME/share/hadoop/mapreduce/*,$HADOOP_HOME/share/hadoop/mapreduce/lib/*,$HADOOP_HOME/share/hadoop/yarn/*,$HADOOP_HOME/share/hadoop/yarn/lib/*</value>
+    </property>
+
     <!-- Disable physical memory check to avoid container kill issues on WSL/low-RAM dev boxes -->
     <property>
         <name>yarn.nodemanager.pmem-check-enabled</name>

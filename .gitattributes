@@ -1,0 +1,13 @@
+# Enforce LF endings on all Linux scripts and configurations
+* text=auto
+
+*.sh text eol=lf
+ran-hadoop text eol=lf
+*.xml text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+
+# Windows scripts keep CRLF
+*.bat text eol=crlf
+*.ps1 text eol=crlf

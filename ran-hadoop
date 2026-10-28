@@ -31,10 +31,12 @@ RESET="\033[0m"
 if [ -z "$HADOOP_HOME" ]; then
     if [ -d "$HOME/hadoop" ]; then
         export HADOOP_HOME="$HOME/hadoop"
+    elif [ -d "/usr/local/hadoop" ]; then
+        export HADOOP_HOME="/usr/local/hadoop"
     elif [ -d "/opt/hadoop" ]; then
         export HADOOP_HOME="/opt/hadoop"
     else
-        echo -e "${RED}[ERROR] HADOOP_HOME not found ($HOME/hadoop, /opt/hadoop).${RESET}"
+        echo -e "${RED}[ERROR] HADOOP_HOME not found ($HOME/hadoop, /usr/local/hadoop, /opt/hadoop).${RESET}"
         echo "Please run ./install.sh first or export HADOOP_HOME=/path/to/hadoop."
         exit 1
     fi
@@ -56,6 +58,14 @@ if [ -z "$JAVA_HOME" ] && command -v java >/dev/null 2>&1; then
 fi
 
 export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$JAVA_HOME/bin:$PATH"
+
+# Ensure Hadoop daemon users are defined for WSL / root execution
+CURRENT_USER="$(whoami)"
+export HDFS_NAMENODE_USER="${HDFS_NAMENODE_USER:-$CURRENT_USER}"
+export HDFS_DATANODE_USER="${HDFS_DATANODE_USER:-$CURRENT_USER}"
+export HDFS_SECONDARYNAMENODE_USER="${HDFS_SECONDARYNAMENODE_USER:-$CURRENT_USER}"
+export YARN_RESOURCEMANAGER_USER="${YARN_RESOURCEMANAGER_USER:-$CURRENT_USER}"
+export YARN_NODEMANAGER_USER="${YARN_NODEMANAGER_USER:-$CURRENT_USER}"
 
 # Stop services function
 stop_all_services() {
@@ -112,7 +122,16 @@ start_all_services() {
     # Ensure SSH service is running
     if ! service ssh status >/dev/null 2>&1; then
         echo -e "${CYAN}[1/4] Ensuring SSH service is running...${RESET}"
-        if sudo -n service ssh start >/dev/null 2>&1 || sudo service ssh start >/dev/null 2>&1 || service ssh start >/dev/null 2>&1; then
+        if [ "$(id -u)" -eq 0 ]; then
+            mkdir -p /run/sshd 2>/dev/null || true
+            ssh-keygen -A >/dev/null 2>&1 || true
+            service ssh start >/dev/null 2>&1 || /usr/sbin/sshd >/dev/null 2>&1 || true
+        else
+            sudo -n mkdir -p /run/sshd 2>/dev/null || sudo mkdir -p /run/sshd 2>/dev/null || true
+            sudo -n ssh-keygen -A >/dev/null 2>&1 || sudo ssh-keygen -A >/dev/null 2>&1 || true
+            sudo -n service ssh start >/dev/null 2>&1 || sudo service ssh start >/dev/null 2>&1 || service ssh start >/dev/null 2>&1 || true
+        fi
+        if service ssh status >/dev/null 2>&1 || pgrep -x sshd >/dev/null 2>&1; then
             echo -e "${GREEN}  ✓ SSH service started.${RESET}"
         else
             echo -e "${YELLOW}  ! Note: Could not auto-start SSH without sudo. If Hadoop fails to connect, run 'sudo service ssh start'.${RESET}"
