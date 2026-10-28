@@ -1,0 +1,232 @@
+================================================================================
+APACHE HADOOP ALL COMMANDS STEP-BY-STEP (STARTING TO END)
+Teacher Specification & Fresh Clean WSL Reinstall
+================================================================================
+
+PHASE 1: WINDOWS POWERSHELL (RUN AS ADMINISTRATOR)
+--------------------------------------------------------------------------------
+1. Check WSL Status:
+   wsl --status
+   wsl --list --verbose
+
+2. Shut down running WSL instances:
+   wsl --shutdown
+
+3. Delete / Unregister old Ubuntu distribution (CLEAN WIPE):
+   wsl --unregister Ubuntu
+
+4. Update WSL kernel component:
+   wsl --update
+
+5. Set default WSL version to 2:
+   wsl --set-default-version 2
+
+6. Fresh install of Ubuntu:
+   wsl --install -d Ubuntu --web-download
+
+7. Launch fresh Ubuntu shell:
+   wsl -d Ubuntu
+
+
+PHASE 2: INSIDE UBUNTU LINUX TERMINAL (INITIAL SETUP & APT UPDATE)
+--------------------------------------------------------------------------------
+8. Update repository index & upgrade packages:
+   sudo apt update -y && sudo apt upgrade -y
+
+9. Install required tools, OpenSSH, rsync, aria2:
+   sudo apt install -y openssh-server openssh-client rsync curl wget tar git aria2 procps net-tools nano
+
+
+PHASE 3: JAVA INSTALLATION & DEDICATED HADOOP USER
+--------------------------------------------------------------------------------
+10. Install OpenJDK 11:
+    sudo apt install -y openjdk-11-jdk
+
+11. Verify Java version:
+    java -version
+    javac -version
+
+12. Create hadoop group and hduser (as in teacher's notes):
+    sudo addgroup hadoop
+    sudo adduser --ingroup hadoop hduser
+    sudo adduser hduser sudo
+
+13. Switch to hduser:
+    su - hduser
+    cd ~
+
+
+PHASE 4: PASSWORDLESS SSH CONFIGURATION (AS hduser)
+--------------------------------------------------------------------------------
+14. Generate RSA keypair:
+    ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+
+15. Authorize key and set permissions:
+    cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+    chmod 700 ~/.ssh
+    chmod 600 ~/.ssh/authorized_keys
+
+16. Start SSH server daemon:
+    sudo service ssh start
+
+17. Test SSH connection:
+    ssh localhost
+    (Type 'exit' to return to hduser shell)
+
+
+PHASE 5: DOWNLOAD & INSTALL HADOOP TO /usr/local/hadoop
+--------------------------------------------------------------------------------
+18. Download Hadoop (16-thread accelerated):
+    aria2c -x 16 -s 16 -k 1M -d /tmp -o hadoop.tar.gz https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
+
+19. Extract to /usr/local/hadoop:
+    sudo mkdir -p /usr/local/hadoop
+    sudo tar -xzf /tmp/hadoop.tar.gz -C /usr/local/hadoop --strip-components=1
+    sudo chown -R hduser:hadoop /usr/local/hadoop
+    sudo chmod -R 755 /usr/local/hadoop
+
+20. Create cluster temporary & HDFS storage directories:
+    sudo mkdir -p /usr/local/hadoop_tmp/hdfs/namenode
+    sudo mkdir -p /usr/local/hadoop_tmp/hdfs/datanode
+    sudo chown -R hduser:hadoop /usr/local/hadoop_tmp
+    sudo chmod -R 775 /usr/local/hadoop_tmp
+
+
+PHASE 6: CONFIGURE ENVIRONMENT & XML FILES (TEACHER SPEC)
+--------------------------------------------------------------------------------
+21. Edit ~/.bashrc:
+    cat << 'EOF' >> ~/.bashrc
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export HADOOP_HOME=/usr/local/hadoop
+export PATH=$PATH:$HADOOP_HOME/bin
+export PATH=$PATH:$HADOOP_HOME/sbin
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib"
+EOF
+
+    source ~/.bashrc
+
+22. Set JAVA_HOME in hadoop-env.sh:
+    echo 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64' >> /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+
+23. Configure core-site.xml (/usr/local/hadoop/etc/hadoop/core-site.xml):
+    cat << 'EOF' > /usr/local/hadoop/etc/hadoop/core-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>fs.default.name</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+    <property>
+        <name>hadoop.tmp.dir</name>
+        <value>/usr/local/hadoop_tmp</value>
+    </property>
+</configuration>
+EOF
+
+24. Configure hdfs-site.xml (/usr/local/hadoop/etc/hadoop/hdfs-site.xml):
+    cat << 'EOF' > /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:/usr/local/hadoop_tmp/hdfs/namenode</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:/usr/local/hadoop_tmp/hdfs/datanode</value>
+    </property>
+    <property>
+        <name>dfs.namenode.http-address</name>
+        <value>0.0.0.0:9870</value>
+    </property>
+</configuration>
+EOF
+
+25. Configure yarn-site.xml (/usr/local/hadoop/etc/hadoop/yarn-site.xml):
+    cat << 'EOF' > /usr/local/hadoop/etc/hadoop/yarn-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+    <property>
+        <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>
+        <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+    </property>
+    <property>
+        <name>yarn.nodemanager.pmem-check-enabled</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>yarn.nodemanager.vmem-check-enabled</name>
+        <value>false</value>
+    </property>
+</configuration>
+EOF
+
+26. Configure mapred-site.xml (/usr/local/hadoop/etc/hadoop/mapred-site.xml):
+    cat << 'EOF' > /usr/local/hadoop/etc/hadoop/mapred-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+    </property>
+</configuration>
+EOF
+
+27. Format NameNode:
+    hdfs namenode -format
+
+
+PHASE 7: START CLUSTER & RUN MAPREDUCE (WORDCOUNT)
+--------------------------------------------------------------------------------
+28. Start HDFS & YARN services:
+    start-dfs.sh
+    start-yarn.sh
+
+29. Check running processes:
+    jps
+    (Should see NameNode, DataNode, SecondaryNameNode, ResourceManager, NodeManager, Jps)
+
+30. Web Dashboard URLs in Browser:
+    - NameNode: http://localhost:9870
+    - YARN RM:  http://localhost:8088
+
+31. Create input file:
+    echo "Hadoop MapReduce big data distributed computing" > sample_input.txt
+
+32. Ingest input file into HDFS:
+    hdfs dfs -mkdir -p /my_data/input
+    hdfs dfs -put sample_input.txt /my_data/input/
+    hdfs dfs -ls /my_data/input
+
+33. Run MapReduce WordCount:
+    hdfs dfs -rm -r -f /my_data/output
+    hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output
+
+34. View output results:
+    hdfs dfs -cat /my_data/output/part-r-00000
+
+35. Download results to local filesystem:
+    hdfs dfs -get /my_data/output/part-r-00000 ./wordcount_results.txt
+    cat wordcount_results.txt
+
+36. Stop Hadoop cluster cleanly:
+    stop-yarn.sh
+    stop-dfs.sh
+================================================================================
