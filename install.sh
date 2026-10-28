@@ -385,7 +385,7 @@ if [ -n "$LOCAL_TAR" ]; then
         cp -f "$LOCAL_TAR" "$DOWNLOAD_DIR/$TAR_NAME"
     fi
 else
-    echo "  Downloading Apache Hadoop $HADOOP_VERSION with 16 concurrent connections & stall watchdog..."
+    echo "  Downloading Apache Hadoop $HADOOP_VERSION with 16 concurrent connections (aria2c)..."
     rm -f "$DOWNLOAD_DIR/$TAR_NAME" "$DOWNLOAD_DIR/$TAR_NAME.aria2"
 
     max_dl_attempts=5
@@ -404,52 +404,25 @@ else
             --lowest-speed-limit=10K \
             --timeout=30 \
             --connect-timeout=15 \
-            --summary-interval=5 \
+            --summary-interval=2 \
             --max-tries=5 \
             --retry-wait=2 \
+            --auto-file-renaming=false \
+            --allow-overwrite=true \
             --dir="$DOWNLOAD_DIR" \
             --out="$TAR_NAME" \
-            "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL" &
-
-        dl_pid=$!
-        prev_sz=0
-        stuck_cnt=0
-        max_stuck_cnt=6 # 30 seconds without growth
-
-        while kill -0 "$dl_pid" 2>/dev/null; do
-            sleep 5
-            if [ -f "$target_dl" ]; then
-                cur_sz=$(stat -c%s "$target_dl" 2>/dev/null || stat -f%z "$target_dl" 2>/dev/null || echo 0)
-                if [ "$cur_sz" -gt "$prev_sz" ]; then
-                    delta_sz=$(( cur_sz - prev_sz ))
-                    spd_kb=$(( delta_sz / 5120 ))
-                    stuck_cnt=0
-                    echo -e "    ${CYAN}[Watchdog Active]${RESET} $(( cur_sz / 1048576 )) MB downloaded (~${spd_kb} KB/s) | Stall counter: 0/$max_stuck_cnt (Normal)"
-                    prev_sz=$cur_sz
-                else
-                    stuck_cnt=$(( stuck_cnt + 1 ))
-                    echo -e "    ${YELLOW}[Watchdog Check] Stall counter: $stuck_cnt/$max_stuck_cnt (Waiting for data chunks...)${RESET}"
-                    if [ "$stuck_cnt" -ge "$max_stuck_cnt" ]; then
-                        echo -e "${RED}    [Watchdog Alert] Download stalled for 30s! Restarting fresh connections...${RESET}"
-                        kill -9 "$dl_pid" 2>/dev/null || true
-                        wait "$dl_pid" 2>/dev/null || true
-                        break
-                    fi
-                fi
-            fi
-        done
-
-        wait "$dl_pid" 2>/dev/null || true
+            "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL" || true
 
         # Completion & Integrity Checker
         if [ -f "$target_dl" ]; then
-            final_sz=$(stat -c%s "$target_dl" 2>/dev/null || stat -f%z "$target_dl" 2>/dev/null || echo 0)
+            final_sz=$(stat -c%s "$target_dl" 2>/dev/null || stat -f%z "$target_dl" 2>/dev/null || wc -c < "$target_dl" 2>/dev/null || echo 0)
             if [ "$final_sz" -ge 500000000 ] && tar -tzf "$target_dl" | head -n 10 >/dev/null 2>&1; then
                 echo -e "${GREEN}  ✓ [CHECKER PASSED] Download 100% complete & archive verified ($(( final_sz / 1048576 )) MB).${RESET}"
                 rm -f "$target_dl.aria2"
                 break
             else
-                echo -e "${RED}  ! [CHECKER FAILED] Archive failed integrity test. Retrying...${RESET}"
+                echo -e "${RED}  ! [CHECKER FAILED] Archive failed integrity test ($(( final_sz / 1048576 )) MB). Retrying in 3s...${RESET}"
+                rm -f "$target_dl" "$target_dl.aria2"
             fi
         fi
 
@@ -566,15 +539,15 @@ cat << EOF > "$HADOOP_CONF_DIR/mapred-site.xml"
     </property>
     <property>
         <name>yarn.app.mapreduce.am.env</name>
-        <value>HADOOP_MAPRED_HOME=$INSTALL_DIR</value>
+        <value>HADOOP_MAPRED_HOME=$INSTALL_DIR,HADOOP_COMMON_HOME=$INSTALL_DIR,HADOOP_HDFS_HOME=$INSTALL_DIR,HADOOP_YARN_HOME=$INSTALL_DIR,HADOOP_HOME=$INSTALL_DIR</value>
     </property>
     <property>
         <name>mapreduce.map.env</name>
-        <value>HADOOP_MAPRED_HOME=$INSTALL_DIR</value>
+        <value>HADOOP_MAPRED_HOME=$INSTALL_DIR,HADOOP_COMMON_HOME=$INSTALL_DIR,HADOOP_HDFS_HOME=$INSTALL_DIR,HADOOP_YARN_HOME=$INSTALL_DIR,HADOOP_HOME=$INSTALL_DIR</value>
     </property>
     <property>
         <name>mapreduce.reduce.env</name>
-        <value>HADOOP_MAPRED_HOME=$INSTALL_DIR</value>
+        <value>HADOOP_MAPRED_HOME=$INSTALL_DIR,HADOOP_COMMON_HOME=$INSTALL_DIR,HADOOP_HDFS_HOME=$INSTALL_DIR,HADOOP_YARN_HOME=$INSTALL_DIR,HADOOP_HOME=$INSTALL_DIR</value>
     </property>
     <property>
         <name>mapreduce.map.memory.mb</name>
@@ -586,7 +559,7 @@ cat << EOF > "$HADOOP_CONF_DIR/mapred-site.xml"
     </property>
     <property>
         <name>mapreduce.application.classpath</name>
-        <value>\$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*:\$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*:\$HADOOP_COMMON_HOME/share/hadoop/common/*:\$HADOOP_COMMON_HOME/share/hadoop/common/lib/*:\$HADOOP_HDFS_HOME/share/hadoop/hdfs/*:\$HADOOP_HDFS_HOME/share/hadoop/hdfs/lib/*:\$HADOOP_YARN_HOME/share/hadoop/yarn/*:\$HADOOP_YARN_HOME/share/hadoop/yarn/lib/*</value>
+        <value>$INSTALL_DIR/share/hadoop/mapreduce/*:$INSTALL_DIR/share/hadoop/mapreduce/lib/*:$INSTALL_DIR/share/hadoop/common/*:$INSTALL_DIR/share/hadoop/common/lib/*:$INSTALL_DIR/share/hadoop/hdfs/*:$INSTALL_DIR/share/hadoop/hdfs/lib/*:$INSTALL_DIR/share/hadoop/yarn/*:$INSTALL_DIR/share/hadoop/yarn/lib/*</value>
     </property>
 </configuration>
 EOF
@@ -614,11 +587,11 @@ cat << EOF > "$HADOOP_CONF_DIR/yarn-site.xml"
     </property>
     <property>
         <name>yarn.nodemanager.env-whitelist</name>
-        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,LC_ALL</value>
+        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,HADOOP_MAPRED_HOME,PATH,LANG,LC_ALL</value>
     </property>
     <property>
         <name>yarn.application.classpath</name>
-        <value>\$HADOOP_HOME/etc/hadoop,\$HADOOP_HOME/share/hadoop/common/*,\$HADOOP_HOME/share/hadoop/common/lib/*,\$HADOOP_HOME/share/hadoop/hdfs/*,\$HADOOP_HOME/share/hadoop/hdfs/lib/*,\$HADOOP_HOME/share/hadoop/mapreduce/*,\$HADOOP_HOME/share/hadoop/mapreduce/lib/*,\$HADOOP_HOME/share/hadoop/yarn/*,\$HADOOP_HOME/share/hadoop/yarn/lib/*</value>
+        <value>$INSTALL_DIR/etc/hadoop,$INSTALL_DIR/share/hadoop/common/*,$INSTALL_DIR/share/hadoop/common/lib/*,$INSTALL_DIR/share/hadoop/hdfs/*,$INSTALL_DIR/share/hadoop/hdfs/lib/*,$INSTALL_DIR/share/hadoop/mapreduce/*,$INSTALL_DIR/share/hadoop/mapreduce/lib/*,$INSTALL_DIR/share/hadoop/yarn/*,$INSTALL_DIR/share/hadoop/yarn/lib/*</value>
     </property>
     <!-- Prevent container memory check failures in WSL / virtualized environments -->
     <property>

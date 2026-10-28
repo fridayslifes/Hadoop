@@ -143,16 +143,30 @@ run-wordcount
 ```
 *(Or specify a custom text file: `run-wordcount /path/to/text.txt`)*
 
-### Option 2: Step-by-Step Manual Commands
+### Option 2: Run Custom Java Source File (`WordCount.java`)
+If your professor or lab assignment asks you to compile and run custom Java MapReduce code:
 ```bash
+# Automatically compiles with Hadoop 3 classpath, packages JAR, and executes on YARN:
+run-wordcount WordCount.java
+# Or with custom text:
+run-wordcount WordCount.java my_text.txt
+```
+
+### Option 3: Step-by-Step Manual Commands
+```bash
+# Manual compilation (Java 11 + Hadoop 3 classpath):
+javac -classpath $(hadoop classpath) -d /tmp/wordcount_classes WordCount.java
+jar -cvf WordCount.jar -C /tmp/wordcount_classes .
+
 # 1. Ingest input file to HDFS
 hdfs dfs -mkdir -p /my_data/input
 hdfs dfs -put -f sample_input.txt /my_data/input/
 hdfs dfs -ls /my_data/input
 
-# 2. Run MapReduce WordCount JAR
+# 2. Run MapReduce WordCount JAR on YARN
 hdfs dfs -rm -r -f /my_data/output
-hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output
+hadoop jar WordCount.jar WordCount /my_data/input /my_data/output
+# (Or use binary examples: hadoop jar $HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-*.jar wordcount /my_data/input /my_data/output)
 
 # 3. View results from HDFS
 hdfs dfs -cat /my_data/output/part-r-00000 | head -n 25
@@ -184,6 +198,7 @@ Hadoop/
 ├── install.sh                     # Ordered 7-step installer (offline-aware, 16-thread)
 ├── ran-hadoop                     # Cluster lifecycle manager (auto-shutdown monitor)
 ├── run-wordcount.sh               # MapReduce WordCount demonstration script
+├── WordCount.java                 # Standard Java MapReduce WordCount source file
 ├── download-offline-bundle.sh     # Linux/WSL/macOS 16-thread offline backup downloader
 ├── download-offline-bundle.bat    # Windows batch launcher for offline backup
 ├── download-offline-bundle.ps1    # Windows PowerShell 16-thread offline backup downloader

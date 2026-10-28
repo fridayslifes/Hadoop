@@ -8,22 +8,22 @@
         <description>The runtime framework for executing MapReduce jobs.</description>
     </property>
 
-    <!-- MapReduce ApplicationMaster environment -->
+    <!-- MapReduce ApplicationMaster container environment -->
     <property>
         <name>yarn.app.mapreduce.am.env</name>
-        <value>HADOOP_MAPRED_HOME=_HADOOP_HOME_</value>
+        <value>HADOOP_MAPRED_HOME=${env.HADOOP_HOME},HADOOP_COMMON_HOME=${env.HADOOP_HOME},HADOOP_HDFS_HOME=${env.HADOOP_HOME},HADOOP_YARN_HOME=${env.HADOOP_HOME},HADOOP_HOME=${env.HADOOP_HOME}</value>
     </property>
 
-    <!-- Map tasks environment -->
+    <!-- Map tasks container environment -->
     <property>
         <name>mapreduce.map.env</name>
-        <value>HADOOP_MAPRED_HOME=_HADOOP_HOME_</value>
+        <value>HADOOP_MAPRED_HOME=${env.HADOOP_HOME},HADOOP_COMMON_HOME=${env.HADOOP_HOME},HADOOP_HDFS_HOME=${env.HADOOP_HOME},HADOOP_YARN_HOME=${env.HADOOP_HOME},HADOOP_HOME=${env.HADOOP_HOME}</value>
     </property>
 
-    <!-- Reduce tasks environment -->
+    <!-- Reduce tasks container environment -->
     <property>
         <name>mapreduce.reduce.env</name>
-        <value>HADOOP_MAPRED_HOME=_HADOOP_HOME_</value>
+        <value>HADOOP_MAPRED_HOME=${env.HADOOP_HOME},HADOOP_COMMON_HOME=${env.HADOOP_HOME},HADOOP_HDFS_HOME=${env.HADOOP_HOME},HADOOP_YARN_HOME=${env.HADOOP_HOME},HADOOP_HOME=${env.HADOOP_HOME}</value>
     </property>
 
     <!-- Memory configuration for local pseudo-distributed cluster -->
@@ -36,9 +36,9 @@
         <value>1024</value>
     </property>
 
-    <!-- MapReduce Application Classpath for Hadoop 3.x -->
+    <!-- MapReduce Application Classpath for Hadoop 3.x (resolves MRAppMaster ClassNotFoundException) -->
     <property>
         <name>mapreduce.application.classpath</name>
-        <value>$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*:$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*:$HADOOP_COMMON_HOME/share/hadoop/common/*:$HADOOP_COMMON_HOME/share/hadoop/common/lib/*:$HADOOP_HDFS_HOME/share/hadoop/hdfs/*:$HADOOP_HDFS_HOME/share/hadoop/hdfs/lib/*:$HADOOP_YARN_HOME/share/hadoop/yarn/*:$HADOOP_YARN_HOME/share/hadoop/yarn/lib/*</value>
+        <value>${env.HADOOP_HOME}/share/hadoop/mapreduce/*:${env.HADOOP_HOME}/share/hadoop/mapreduce/lib/*:${env.HADOOP_HOME}/share/hadoop/common/*:${env.HADOOP_HOME}/share/hadoop/common/lib/*:${env.HADOOP_HOME}/share/hadoop/hdfs/*:${env.HADOOP_HOME}/share/hadoop/hdfs/lib/*:${env.HADOOP_HOME}/share/hadoop/yarn/*:${env.HADOOP_HOME}/share/hadoop/yarn/lib/*</value>
     </property>
 </configuration>

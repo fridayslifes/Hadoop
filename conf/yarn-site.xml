@@ -21,19 +21,19 @@
         <value>0.0.0.0:8088</value>
     </property>
 
-    <!-- Environment variables whitelisted for containers -->
+    <!-- Environment variables whitelisted for YARN containers -->
     <property>
         <name>yarn.nodemanager.env-whitelist</name>
-        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,PATH,LANG,LC_ALL</value>
+        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_HOME,HADOOP_MAPRED_HOME,PATH,LANG,LC_ALL</value>
     </property>
 
-    <!-- Application Classpath for YARN Containers in Hadoop 3.x -->
+    <!-- Application Classpath for YARN Containers in Hadoop 3.x (resolves container ClassNotFoundException) -->
     <property>
         <name>yarn.application.classpath</name>
-        <value>$HADOOP_HOME/etc/hadoop,$HADOOP_HOME/share/hadoop/common/*,$HADOOP_HOME/share/hadoop/common/lib/*,$HADOOP_HOME/share/hadoop/hdfs/*,$HADOOP_HOME/share/hadoop/hdfs/lib/*,$HADOOP_HOME/share/hadoop/mapreduce/*,$HADOOP_HOME/share/hadoop/mapreduce/lib/*,$HADOOP_HOME/share/hadoop/yarn/*,$HADOOP_HOME/share/hadoop/yarn/lib/*</value>
+        <value>${env.HADOOP_HOME}/etc/hadoop,${env.HADOOP_HOME}/share/hadoop/common/*,${env.HADOOP_HOME}/share/hadoop/common/lib/*,${env.HADOOP_HOME}/share/hadoop/hdfs/*,${env.HADOOP_HOME}/share/hadoop/hdfs/lib/*,${env.HADOOP_HOME}/share/hadoop/mapreduce/*,${env.HADOOP_HOME}/share/hadoop/mapreduce/lib/*,${env.HADOOP_HOME}/share/hadoop/yarn/*,${env.HADOOP_HOME}/share/hadoop/yarn/lib/*</value>
     </property>
 
-    <!-- Disable physical memory check to avoid container kill issues on WSL/low-RAM dev boxes -->
+    <!-- Disable physical and virtual memory checks for WSL and virtualized dev environments -->
     <property>
         <name>yarn.nodemanager.pmem-check-enabled</name>
         <value>false</value>

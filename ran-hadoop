@@ -58,6 +58,23 @@ if [ -z "$JAVA_HOME" ] && command -v java >/dev/null 2>&1; then
 fi
 
 export PATH="$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$JAVA_HOME/bin:$PATH"
+export HADOOP_CLASSPATH=$("$HADOOP_HOME/bin/hadoop" classpath 2>/dev/null || echo "")
+
+# Self-heal any unexpanded XML properties
+if [ -f "$HADOOP_HOME/etc/hadoop/mapred-site.xml" ]; then
+    if grep -q '\$HADOOP_MAPRED_HOME' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || grep -q '_HADOOP_HOME_' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null; then
+        sed -i 's|_HADOOP_HOME_|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_MAPRED_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_COMMON_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_HDFS_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_YARN_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+    fi
+fi
+if [ -f "$HADOOP_HOME/etc/hadoop/yarn-site.xml" ]; then
+    if grep -q '\$HADOOP_HOME' "$HADOOP_HOME/etc/hadoop/yarn-site.xml" 2>/dev/null; then
+        sed -i 's|\$HADOOP_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/yarn-site.xml" 2>/dev/null || true
+    fi
+fi
 
 # Ensure Hadoop daemon users are defined for WSL / root execution
 CURRENT_USER="$(whoami)"

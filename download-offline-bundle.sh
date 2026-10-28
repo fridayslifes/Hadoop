@@ -10,8 +10,8 @@
 #
 # Features:
 #   • 16-Thread accelerated downloading via aria2c (Strictly No Fallback)
-#   • Active Watchdog Monitor: stall counter detects stuck downloads (>30s) and restarts
-#   • Completion & Integrity Checker: tests file size and tar structure
+#   • Active Connection Watchdog: auto-reconnects on stalls (>30s)
+#   • Completion & Integrity Checker: tests file size and archive structure
 # ==============================================================================
 
 set -e
@@ -76,7 +76,7 @@ fi
 
 echo -e "${GREEN}  ✓ aria2c 16-connection downloader active: $(aria2c --version | head -n 1)${RESET}"
 
-# Helper function: 16-thread download with stall watchdog counter and completion checker
+# Helper function: 16-thread download with stall watchdog and completion checker
 download_16_threads() {
     local outfile="$1"
     local min_bytes="$2"
@@ -106,9 +106,10 @@ download_16_threads() {
     local attempt=1
 
     while [ "$attempt" -le "$max_attempts" ]; do
-        echo -e "\n${CYAN}[*] Downloading $outfile (Attempt $attempt/$max_attempts) with 16 threads & stall watchdog...${RESET}"
+        echo -e "\n${CYAN}[*] Downloading $outfile (Attempt $attempt/$max_attempts) utilizing 16 concurrent threads...${RESET}"
         
-        # Start aria2c in background with 16 connections
+        # aria2c runs with 16 connections and built-in stall watchdog:
+        # --lowest-speed-limit=10K and --timeout=30 ensures any stalled mirror is dropped after 30s
         aria2c \
             --split=16 \
             --max-connection-per-server=16 \
@@ -118,47 +119,18 @@ download_16_threads() {
             --lowest-speed-limit=10K \
             --timeout=30 \
             --connect-timeout=15 \
-            --summary-interval=5 \
+            --summary-interval=2 \
             --max-tries=5 \
             --retry-wait=2 \
+            --auto-file-renaming=false \
+            --allow-overwrite=true \
             --dir="$SCRIPT_DIR" \
             --out="$outfile" \
-            "${urls[@]}" &
-        
-        local aria_pid=$!
-        local prev_size=0
-        local stuck_count=0
-        local max_stuck=6 # 6 * 5s = 30 seconds with 0 bytes = stuck
-
-        # Watchdog loop: checks whether download is progressing or stuck
-        while kill -0 "$aria_pid" 2>/dev/null; do
-            sleep 5
-            if [ -f "$target" ]; then
-                local cur_size=$(stat -c%s "$target" 2>/dev/null || stat -f%z "$target" 2>/dev/null || echo 0)
-                if [ "$cur_size" -gt "$prev_size" ]; then
-                    local delta=$(( cur_size - prev_size ))
-                    local speed_kb=$(( delta / 5120 ))
-                    stuck_count=0
-                    echo -e "    ${CYAN}[Watchdog Active]${RESET} $(( cur_size / 1048576 )) MB downloaded (~${speed_kb} KB/s) | Stall Counter: 0/$max_stuck (Progressing normally)"
-                    prev_size=$cur_size
-                else
-                    stuck_count=$(( stuck_count + 1 ))
-                    echo -e "    ${YELLOW}[Watchdog Check] Stall Counter: $stuck_count/$max_stuck (Waiting for data chunks...)${RESET}"
-                    if [ "$stuck_count" -ge "$max_stuck" ]; then
-                        echo -e "${RED}    [Watchdog Alert] Download stalled for 30s! Terminating and restarting fresh connections...${RESET}"
-                        kill -9 "$aria_pid" 2>/dev/null || true
-                        wait "$aria_pid" 2>/dev/null || true
-                        break
-                    fi
-                fi
-            fi
-        done
-
-        wait "$aria_pid" 2>/dev/null || true
+            "${urls[@]}" || true
 
         # [CHECKER 2]: Post-Download Completion & Integrity Checker
         if [ -f "$target" ]; then
-            local final_size=$(stat -c%s "$target" 2>/dev/null || stat -f%z "$target" 2>/dev/null || echo 0)
+            local final_size=$(stat -c%s "$target" 2>/dev/null || stat -f%z "$target" 2>/dev/null || wc -c < "$target" 2>/dev/null || echo 0)
             if [ "$final_size" -ge "$min_bytes" ]; then
                 if [[ "$outfile" == *.tar.gz ]]; then
                     if tar -tzf "$target" | head -n 10 >/dev/null 2>&1; then
@@ -177,6 +149,7 @@ download_16_threads() {
         fi
 
         echo -e "${YELLOW}  ! Attempt $attempt did not pass completion check. Retrying in 3s...${RESET}"
+        rm -f "$target" "$target.aria2"
         attempt=$(( attempt + 1 ))
         sleep 3
     done
@@ -216,29 +189,42 @@ download_16_threads "$WSL_MSI_NAME" 10000000 "$WSL_MSI_URL"
 # 6. Download OpenSSH server and client deb packages for offline Linux/WSL installation
 echo -e "\n${CYAN}[*] Downloading OpenSSH packages with 16 connections for offline Linux/WSL...${RESET}"
 mkdir -p "$SCRIPT_DIR/offline_packages"
-SSH_DEB_URLS=(
-    "http://archive.ubuntu.com/ubuntu/pool/main/o/openssh/openssh-client_8.9p1-3ubuntu0.10_amd64.deb"
-    "http://archive.ubuntu.com/ubuntu/pool/main/o/openssh/openssh-server_8.9p1-3ubuntu0.10_amd64.deb"
-    "http://archive.ubuntu.com/ubuntu/pool/main/o/openssh/openssh-sftp-server_8.9p1-3ubuntu0.10_amd64.deb"
-)
-for deb_url in "${SSH_DEB_URLS[@]}"; do
-    deb_file=$(basename "$deb_url")
-    if [ ! -f "$SCRIPT_DIR/offline_packages/$deb_file" ]; then
-        aria2c --split=16 --max-connection-per-server=16 -k 1M --file-allocation=none --dir="$SCRIPT_DIR/offline_packages" --out="$deb_file" "$deb_url" 2>/dev/null || true
+
+# Try native apt-get download if running on Debian/Ubuntu
+DOWNLOADED_APT=0
+if command -v apt-get >/dev/null 2>&1; then
+    (cd "$SCRIPT_DIR/offline_packages" && apt-get download openssh-client openssh-server openssh-sftp-server >/dev/null 2>&1) || true
+    if ls "$SCRIPT_DIR"/offline_packages/openssh*.deb >/dev/null 2>&1; then
+        DOWNLOADED_APT=1
+        echo -e "${GREEN}  ✓ [CHECKER PASSED] Fetched native OpenSSH debs via apt-get download.${RESET}"
     fi
-    if [ -f "$SCRIPT_DIR/offline_packages/$deb_file" ] && [ -s "$SCRIPT_DIR/offline_packages/$deb_file" ]; then
-        echo -e "${GREEN}  ✓ [CHECKER PASSED] OpenSSH package ready: $deb_file${RESET}"
-    fi
-done
+fi
+
+if [ "$DOWNLOADED_APT" -eq 0 ]; then
+    SSH_DEB_URLS=(
+        "http://archive.ubuntu.com/ubuntu/pool/main/o/openssh/openssh-client_8.9p1-3_amd64.deb"
+        "http://archive.ubuntu.com/ubuntu/pool/main/o/openssh/openssh-server_8.9p1-3_amd64.deb"
+        "http://archive.ubuntu.com/ubuntu/pool/main/o/openssh/openssh-sftp-server_8.9p1-3_amd64.deb"
+    )
+    for deb_url in "${SSH_DEB_URLS[@]}"; do
+        deb_file=$(basename "$deb_url")
+        if [ ! -f "$SCRIPT_DIR/offline_packages/$deb_file" ]; then
+            aria2c --split=16 --max-connection-per-server=16 -k 1M --file-allocation=none --dir="$SCRIPT_DIR/offline_packages" --out="$deb_file" "$deb_url" 2>/dev/null || true
+        fi
+        if [ -f "$SCRIPT_DIR/offline_packages/$deb_file" ] && [ -s "$SCRIPT_DIR/offline_packages/$deb_file" ]; then
+            echo -e "${GREEN}  ✓ [CHECKER PASSED] OpenSSH package ready: $deb_file${RESET}"
+        fi
+    done
+fi
 
 echo -e "\n${GREEN}================================================================${RESET}"
 echo -e "${GREEN}${BOLD}    🎉 Complete Offline Backup Bundle Ready on this Machine!     ${RESET}"
 echo -e "${GREEN}================================================================${RESET}"
 echo -e "Saved inside: ${BOLD}$SCRIPT_DIR${RESET}"
-echo -e "  • Hadoop Tarball : $TAR_NAME ($(du -h "$SCRIPT_DIR/$TAR_NAME" 2>/dev/null | cut -f1 || echo "Present"))"
-echo -e "  • Examples JAR   : $JAR_NAME ($(du -h "$SCRIPT_DIR/$JAR_NAME" 2>/dev/null | cut -f1 || echo "Present"))"
-echo -e "  • Java OpenJDK 11: $JAVA_TAR_NAME ($(du -h "$SCRIPT_DIR/$JAVA_TAR_NAME" 2>/dev/null | cut -f1 || echo "Present"))"
-echo -e "  • WSL Kernel MSI : $WSL_MSI_NAME ($(du -h "$SCRIPT_DIR/$WSL_MSI_NAME" 2>/dev/null | cut -f1 || echo "Present"))"
+echo -e "  • Hadoop Tarball : $TAR_NAME"
+echo -e "  • Examples JAR   : $JAR_NAME"
+echo -e "  • Java OpenJDK 11: $JAVA_TAR_NAME"
+echo -e "  • WSL Kernel MSI : $WSL_MSI_NAME"
 echo -e "  • OpenSSH Debs   : offline_packages/openssh*.deb"
 echo ""
 echo -e "${BOLD}How to Install Completely Offline on a Disconnected Lab PC:${RESET}"

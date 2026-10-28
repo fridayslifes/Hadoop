@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # run-wordcount.sh: Run MapReduce WordCount on Apache Hadoop
-# Uploads input text to HDFS, executes the MapReduce job, and displays results.
+# Supports:
+#   1. Default: runs official hadoop-mapreduce-examples JAR on sample_input.txt
+#   2. Custom text file: ./run-wordcount.sh my_text.txt
+#   3. Custom Java code: ./run-wordcount.sh WordCount.java [optional_input.txt]
+#      (compiles on the fly with Hadoop 3 classpath and packages into JAR)
 # ==============================================================================
 
 set -e
 
 # Ensure valid Linux home directory in WSL environments
-REAL_HOME=$(getent passwd "$(whoami)" | cut -d: -f6)
+REAL_HOME=$(getent passwd "$(whoami)" 2>/dev/null | cut -d: -f6 || echo "$HOME")
 if [ -n "$REAL_HOME" ] && [ -d "$REAL_HOME" ]; then
     export HOME="$REAL_HOME"
 fi
@@ -18,6 +22,8 @@ YELLOW="\033[1;33m"
 CYAN="\033[1;36m"
 RED="\033[1;31m"
 RESET="\033[0m"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || pwd)"
 
 # Auto-detect HADOOP_HOME
 if [ -z "$HADOOP_HOME" ]; then
@@ -51,11 +57,40 @@ export HDFS_SECONDARYNAMENODE_USER="${HDFS_SECONDARYNAMENODE_USER:-$CURRENT_USER
 export YARN_RESOURCEMANAGER_USER="${YARN_RESOURCEMANAGER_USER:-$CURRENT_USER}"
 export YARN_NODEMANAGER_USER="${YARN_NODEMANAGER_USER:-$CURRENT_USER}"
 
-# Input file determination
-INPUT_FILE="${1:-sample_input.txt}"
+# Self-healing: Check and fix any unexpanded variable references in Hadoop XML configs
+if [ -f "$HADOOP_HOME/etc/hadoop/mapred-site.xml" ]; then
+    if grep -q '\$HADOOP_MAPRED_HOME' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || grep -q '_HADOOP_HOME_' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null; then
+        sed -i 's|_HADOOP_HOME_|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_MAPRED_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_COMMON_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_HDFS_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+        sed -i 's|\$HADOOP_YARN_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/mapred-site.xml" 2>/dev/null || true
+    fi
+fi
+if [ -f "$HADOOP_HOME/etc/hadoop/yarn-site.xml" ]; then
+    if grep -q '\$HADOOP_HOME' "$HADOOP_HOME/etc/hadoop/yarn-site.xml" 2>/dev/null; then
+        sed -i 's|\$HADOOP_HOME|${env.HADOOP_HOME}|g' "$HADOOP_HOME/etc/hadoop/yarn-site.xml" 2>/dev/null || true
+    fi
+fi
 
+# Dynamically export full Hadoop classpath to guarantee client JVM resolution
+export HADOOP_CLASSPATH=$("$HADOOP_HOME/bin/hadoop" classpath 2>/dev/null || echo "")
+
+# Parse arguments: check if user provided a .java source file or a text input file
+CUSTOM_JAVA=""
+INPUT_FILE=""
+
+if [ -n "$1" ] && [[ "$1" == *.java ]] && [ -f "$1" ]; then
+    CUSTOM_JAVA="$1"
+    INPUT_FILE="${2:-sample_input.txt}"
+elif [ -n "$1" ] && [ -f "$1" ]; then
+    INPUT_FILE="$1"
+else
+    INPUT_FILE="${1:-sample_input.txt}"
+fi
+
+# Locate or create sample input text file
 if [ ! -f "$INPUT_FILE" ]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     if [ -f "$SCRIPT_DIR/$INPUT_FILE" ]; then
         INPUT_FILE="$SCRIPT_DIR/$INPUT_FILE"
     elif [ -f "$HOME/Hadoop/$INPUT_FILE" ]; then
@@ -65,7 +100,6 @@ if [ ! -f "$INPUT_FILE" ]; then
     elif [ -f "$HADOOP_HOME/$INPUT_FILE" ]; then
         INPUT_FILE="$HADOOP_HOME/$INPUT_FILE"
     else
-        # Auto-create sample input if none found
         INPUT_FILE="/tmp/sample_input.txt"
         cat << 'EOF' > "$INPUT_FILE"
 Apache Hadoop is an open source framework designed for distributed storage and distributed processing of very large datasets on computer clusters built from commodity hardware.
@@ -83,9 +117,10 @@ echo -e "${GREEN}===============================================================
 echo " Input File  : $INPUT_FILE ($(wc -l < "$INPUT_FILE") lines, $(wc -w < "$INPUT_FILE") words)"
 echo " HDFS DFS    : hdfs://localhost:9000"
 echo " Time        : $(date '+%Y-%m-%d %H:%M:%S')"
+[ -n "$CUSTOM_JAVA" ] && echo " Custom Java : $CUSTOM_JAVA (compiling on the fly)"
 echo -e "${GREEN}================================================================${RESET}"
 
-# Verify NameNode is reachable
+# 1. Verify HDFS is reachable
 echo -e "${CYAN}[1/5] Checking Hadoop cluster status...${RESET}"
 if ! jps 2>/dev/null | grep -q "NameNode"; then
     echo -e "${YELLOW}[WARNING] NameNode not detected in 'jps'.${RESET}"
@@ -101,17 +136,57 @@ if ! hdfs dfs -ls / >/dev/null 2>&1; then
 fi
 echo -e "${GREEN}  ✓ HDFS is reachable.${RESET}"
 
-# Locate MapReduce examples JAR
-echo -e "${CYAN}[2/5] Locating MapReduce Examples JAR...${RESET}"
-EXAMPLES_JAR=$(find "$HADOOP_HOME/share/hadoop/mapreduce" -name "hadoop-mapreduce-examples-*.jar" 2>/dev/null | head -n 1)
+# 2. Determine JAR and Main Class
+echo -e "${CYAN}[2/5] Preparing MapReduce WordCount Application...${RESET}"
 
-if [ -z "$EXAMPLES_JAR" ] || [ ! -f "$EXAMPLES_JAR" ]; then
-    echo -e "${RED}[ERROR] Could not find hadoop-mapreduce-examples JAR in $HADOOP_HOME/share/hadoop/mapreduce.${RESET}"
-    exit 1
+JAR_TO_RUN=""
+MAIN_CLASS=""
+
+if [ -n "$CUSTOM_JAVA" ]; then
+    echo "  Compiling $CUSTOM_JAVA using Java 11 & Hadoop 3 classpath..."
+    BUILD_DIR="/tmp/wordcount_build_$$"
+    rm -rf "$BUILD_DIR"
+    mkdir -p "$BUILD_DIR"
+    
+    javac -classpath "$HADOOP_CLASSPATH" -d "$BUILD_DIR" "$CUSTOM_JAVA"
+    
+    CUSTOM_JAR="/tmp/WordCount_$$.jar"
+    jar -cvf "$CUSTOM_JAR" -C "$BUILD_DIR" . >/dev/null
+    rm -rf "$BUILD_DIR"
+    
+    JAR_TO_RUN="$CUSTOM_JAR"
+    MAIN_CLASS="WordCount"
+    echo -e "${GREEN}  ✓ Successfully built custom JAR: $JAR_TO_RUN (Main-Class: $MAIN_CLASS)${RESET}"
+else
+    # Find binary examples JAR (filtering out sources and test jars)
+    EXAMPLES_JAR=$(find "$HADOOP_HOME/share/hadoop/mapreduce" "$SCRIPT_DIR" "$HOME/Hadoop" -name "hadoop-mapreduce-examples-*.jar" ! -name "*-sources.jar" ! -name "*-tests.jar" 2>/dev/null | head -n 1)
+
+    if [ -z "$EXAMPLES_JAR" ] || [ ! -f "$EXAMPLES_JAR" ]; then
+        # Check if WordCount.java exists in repo to compile on the fly as fallback
+        if [ -f "$SCRIPT_DIR/WordCount.java" ]; then
+            echo "  Examples JAR not found. Compiling $SCRIPT_DIR/WordCount.java..."
+            BUILD_DIR="/tmp/wordcount_build_$$"
+            mkdir -p "$BUILD_DIR"
+            javac -classpath "$HADOOP_CLASSPATH" -d "$BUILD_DIR" "$SCRIPT_DIR/WordCount.java"
+            CUSTOM_JAR="$SCRIPT_DIR/WordCount.jar"
+            jar -cvf "$CUSTOM_JAR" -C "$BUILD_DIR" . >/dev/null
+            rm -rf "$BUILD_DIR"
+            EXAMPLES_JAR="$CUSTOM_JAR"
+            MAIN_CLASS="WordCount"
+        else
+            echo -e "${RED}[ERROR] Could not find hadoop-mapreduce-examples JAR in $HADOOP_HOME/share/hadoop/mapreduce.${RESET}"
+            exit 1
+        fi
+    fi
+
+    JAR_TO_RUN="$EXAMPLES_JAR"
+    if [ -z "$MAIN_CLASS" ]; then
+        MAIN_CLASS="wordcount"
+    fi
+    echo -e "${GREEN}  ✓ Using Application JAR: $(basename "$JAR_TO_RUN") (Class: $MAIN_CLASS)${RESET}"
 fi
-echo -e "${GREEN}  ✓ Found JAR: $(basename "$EXAMPLES_JAR")${RESET}"
 
-# Prepare HDFS directories
+# 3. Prepare HDFS directories
 HDFS_INPUT_DIR="/wordcount_demo/input"
 HDFS_OUTPUT_DIR="/wordcount_demo/output"
 
@@ -127,18 +202,18 @@ if hdfs dfs -test -d "$HDFS_OUTPUT_DIR" 2>/dev/null; then
     hdfs dfs -rm -r -f "$HDFS_OUTPUT_DIR" >/dev/null 2>&1
 fi
 
-# Run the MapReduce job
+# 4. Run the MapReduce job
 echo ""
 echo -e "${CYAN}[4/5] Executing MapReduce WordCount Job on YARN...${RESET}"
-echo -e "${BOLD}Command:${RESET} hadoop jar \"$EXAMPLES_JAR\" wordcount \"$HDFS_INPUT_DIR\" \"$HDFS_OUTPUT_DIR\""
+echo -e "${BOLD}Command:${RESET} hadoop jar \"$JAR_TO_RUN\" $MAIN_CLASS \"$HDFS_INPUT_DIR\" \"$HDFS_OUTPUT_DIR\""
 echo "----------------------------------------------------------------"
 
-hadoop jar "$EXAMPLES_JAR" wordcount "$HDFS_INPUT_DIR" "$HDFS_OUTPUT_DIR"
+hadoop jar "$JAR_TO_RUN" $MAIN_CLASS "$HDFS_INPUT_DIR" "$HDFS_OUTPUT_DIR"
 
 echo "----------------------------------------------------------------"
 echo -e "${GREEN}  ✓ MapReduce job completed successfully!${RESET}"
 
-# Display results
+# 5. Display results
 echo ""
 echo -e "${CYAN}[5/5] Fetching WordCount Results from HDFS ($HDFS_OUTPUT_DIR)...${RESET}"
 echo -e "${GREEN}================================================================${RESET}"
