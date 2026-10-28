@@ -76,8 +76,9 @@ PHASE 4: PASSWORDLESS SSH CONFIGURATION (AS hduser)
 
 PHASE 5: DOWNLOAD & INSTALL HADOOP TO /usr/local/hadoop
 --------------------------------------------------------------------------------
-18. Download Hadoop (16-thread accelerated):
-    aria2c -x 16 -s 16 -k 1M -d /tmp -o hadoop.tar.gz https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
+18. Download Hadoop (Mandatory 16-thread multi-connection via aria2c - no fallback):
+    sudo apt install -y aria2
+    aria2c -x 16 -s 16 -k 1M -d /tmp -o hadoop.tar.gz https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz https://dlcdn.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
 
 19. Extract to /usr/local/hadoop:
     sudo mkdir -p /usr/local/hadoop

@@ -433,14 +433,14 @@ def build_pdf(filename="docs/Hadoop_Complete_Guide_Install_Run_WordCount.pdf"):
         body_style
     ))
 
-    story.append(Paragraph("<b>Step 6.1: High-Speed 16-Thread Download via aria2c / curl</b>", h2_style))
+    story.append(Paragraph("<b>Step 6.1: High-Speed 16-Thread Concurrent Download via aria2c</b>", h2_style))
     story.append(create_code_block(
-        "# Option A: Download Hadoop 3.3.6 (Modern Stable) with 16 threads\n"
+        "# 1. Ensure aria2 is installed for mandatory 16-thread multi-connection download\n"
+        "sudo apt install -y aria2\n\n"
+        "# 2. Download Apache Hadoop with 16 concurrent connections (No single-threaded fallback)\n"
         "aria2c -x 16 -s 16 -k 1M -d /tmp -o hadoop.tar.gz \\\n"
-        "  https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz\n\n"
-        "# Option B: Download Hadoop 2.10.2 (Teacher Lab Package from Archive):\n"
-        "# aria2c -x 16 -s 16 -k 1M -d /tmp -o hadoop.tar.gz \\\n"
-        "#   https://archive.apache.org/dist/hadoop/common/hadoop-2.10.2/hadoop-2.10.2.tar.gz",
+        "  https://archive.apache.org/dist/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz \\\n"
+        "  https://dlcdn.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz",
         code_style
     ))
 

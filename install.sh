@@ -256,27 +256,37 @@ else
     rm -f "$DOWNLOAD_DIR/$TAR_NAME"
     echo "  Downloading from Apache mirrors utilizing 16 concurrent connections..."
     
-    if command -v aria2c >/dev/null 2>&1; then
-        aria2c \
-            --split=16 \
-            --max-connection-per-server=16 \
-            --min-split-size=1M \
-            --max-concurrent-downloads=16 \
-            --file-allocation=none \
-            --summary-interval=2 \
-            --max-tries=5 \
-            --retry-wait=2 \
-            --dir="$DOWNLOAD_DIR" \
-            --out="$TAR_NAME" \
-            "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL"
-    elif command -v axel >/dev/null 2>&1; then
-        echo "  (Using axel with 16 connections)"
-        axel -n 16 -o "$DOWNLOAD_DIR/$TAR_NAME" "$PRIMARY_URL" || axel -n 16 -o "$DOWNLOAD_DIR/$TAR_NAME" "$ARCHIVE_URL"
-    else
-        echo -e "${YELLOW}  aria2c not found, falling back to curl...${RESET}"
-        curl -L -C - --retry 3 --output "$DOWNLOAD_DIR/$TAR_NAME" "$PRIMARY_URL" || \
-        curl -L -C - --retry 3 --output "$DOWNLOAD_DIR/$TAR_NAME" "$ARCHIVE_URL"
+    # Ensure aria2c is installed for 16-thread multi-connection downloading - do NOT fall back
+    if ! command -v aria2c >/dev/null 2>&1; then
+        echo -e "${YELLOW}  [*] aria2c not detected. Installing aria2 for 16-thread concurrent downloading...${RESET}"
+        if [ -n "$PKG_MANAGER" ] && [ -n "$SUDO_CMD" ]; then
+            case "$PKG_MANAGER" in
+                apt) $SUDO_CMD apt-get update -y && $SUDO_CMD apt-get install -y aria2 ;;
+                dnf|yum) $SUDO_CMD "$PKG_MANAGER" install -y aria2 ;;
+                pacman) $SUDO_CMD pacman -Sy --noconfirm aria2 ;;
+                zypper) $SUDO_CMD zypper --non-interactive install aria2 ;;
+            esac
+        fi
     fi
+
+    if ! command -v aria2c >/dev/null 2>&1; then
+        echo -e "${RED}[ERROR] aria2c is required for 16-thread downloading but is not installed.${RESET}"
+        exit 1
+    fi
+
+    echo "  Downloading Apache Hadoop utilizing 16 concurrent connections via aria2c..."
+    aria2c \
+        --split=16 \
+        --max-connection-per-server=16 \
+        --min-split-size=1M \
+        --max-concurrent-downloads=16 \
+        --file-allocation=none \
+        --summary-interval=2 \
+        --max-tries=5 \
+        --retry-wait=2 \
+        --dir="$DOWNLOAD_DIR" \
+        --out="$TAR_NAME" \
+        "$PRIMARY_URL" "$ARCHIVE_URL" "$BACKUP_URL"
 fi
 
 # Verify tar archive integrity
